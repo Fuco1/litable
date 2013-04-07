@@ -70,14 +70,19 @@ For example:
                             (setq ignore t)))))
                     ;; are we inside a let form? If so, we need to get
                     ;; the correct value for the argument. For now,
-                    ;; just don't substitute anything inside the
-                    ;; let. Do we even want to resolve the argument
-                    ;; binding here?
+                    ;; just substitute the values inside the let if
+                    ;; the variable is the same as the argument. Do we
+                    ;; want to resolve the let forms always? Might be
+                    ;; useful, but adds confision and the definitions
+                    ;; can't be eval'd anyway, so it'd just copy forms
+                    ;; = ugly. Maybe don't even do anything (add a customize?)
                     ;; depends on `letcheck' library (see top of the file)
                     (save-excursion
                       ;; this jumps in front
-                      (let ((let-form (letcheck-get-let-form)))
-                        (when let-form
+                      (let* ((let-form (letcheck-get-let-form))
+                             (varlist (and let-form (letcheck-extract-variables (cadr let-form)))))
+                        (when (and let-form
+                                   (member cur-param-name (mapcar 'symbol-name varlist)))
                           (setq ignore t)
                           ;; instead do the let-form substitution.
                           (litable-do-let-form-substitution let-form)
@@ -89,7 +94,7 @@ For example:
                                    (propertize
                                     ;; TODO: extract this format into customize
                                     (concat cur-param-name "{"
-                                     (prin1-to-string (nth cur-param-index form)) "}")
+                                            (prin1-to-string (nth cur-param-index form)) "}")
                                     'face
                                     'font-lock-type-face)))
                     (setq ignore nil)))
@@ -118,7 +123,6 @@ For example:
                  (needle (concat "\\_<" (regexp-quote var) "\\_>"))
                  val sep)
             (re-search-forward needle nil t)
-            ;; grab the value (should we also eval it? -- for now yes :P)
             (save-excursion
               (when (save-excursion
                       (my-backward-up-list)
@@ -126,7 +130,11 @@ For example:
                       (looking-at needle))
                 (litable--next-sexp)
                 (setq sep (sexp-at-point))
-                (setq val (eval sep))
+                ;; in this sexp, a value from above can be technically
+                ;; substituted -- this is the let definition
+                (forward-sexp)
+                ;;(setq val (eval sep))
+                (setq val sep)
                 (let (o ignore mb me)
                   (while (re-search-forward needle nil t)
                     (setq mb (match-beginning 0))
