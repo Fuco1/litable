@@ -1,6 +1,12 @@
-;; WIP!!
+;; WIP!! someone clean this up (= me :/)
 
+;; https://github.com/magnars/dash.el
+;; is on melpa/marmalade already
 (require 'dash)
+
+;; https://github.com/Fuco1/letcheck
+;; we should package it on melpa/marmalade
+(require 'letcheck)
 
 (defvar litable-exceptions '(
                              (setq . 2)
@@ -13,7 +19,12 @@ For example:
 
   (setq . 2) ;; first argument is target name, do not substitute.")
 
-;; TODO: add better recursive evaluation
+;; TODO:
+;; - split this monster into managable pieces!
+;;
+;; - maybe add different colors for different arguments that get
+;;   substituted. This might result in rainbows sometimes, maybe
+;;   undersirable
 (defun my-find-function-subs-arguments (form &optional depth)
   ;; first thing in form is the function name
   (setq depth (or depth 0))
@@ -57,6 +68,15 @@ For example:
                           (forward-sexp (cdr ex-form))
                           (when (>= (point) me)
                             (setq ignore t)))))
+                    ;; are we inside a let form? If so, we need to get
+                    ;; the correct value for the argument. For now,
+                    ;; just don't substitute anything inside the
+                    ;; let. Do we even want to resolve the argument
+                    ;; binding here?
+                    ;; depends on `letcheck' library (see top of the file)
+                    (save-excursion
+                      (let ((let-form (letcheck-get-let-form)))
+                        (when let-form (setq ignore t))))
                     (when (not ignore)
                       (setq o (make-overlay mb me))
                       (push o dyneval-overlays)
