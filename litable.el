@@ -75,14 +75,21 @@ For example:
                     ;; binding here?
                     ;; depends on `letcheck' library (see top of the file)
                     (save-excursion
+                      ;; this jumps in front
                       (let ((let-form (letcheck-get-let-form)))
-                        (when let-form (setq ignore t))))
+                        (when let-form
+                          (setq ignore t)
+                          ;; instead do the let-form substitution.
+                          (litable-do-let-form-substitution let-form)
+                          (forward-sexp))))
                     (when (not ignore)
                       (setq o (make-overlay mb me))
                       (push o dyneval-overlays)
                       (overlay-put o 'display
                                    (propertize
-                                    (prin1-to-string (nth cur-param-index form))
+                                    ;; TODO: extract this format into customize
+                                    (concat cur-param-name "{"
+                                     (prin1-to-string (nth cur-param-index form)) "}")
                                     'face
                                     'font-lock-type-face)))
                     (setq ignore nil)))
@@ -95,8 +102,67 @@ For example:
         (overlay-put dyneval-result-overlay
                      'after-string
                      (propertize
+                      ;; TODO: extract this format into customize
                       (format " => %s" (eval form))
                       'face 'font-lock-warning-face))))))
+
+(defun litable-do-let-form-substitution (let-form)
+  "Replace stuff in let form (let* does not work yet)."
+  (save-excursion
+    (save-restriction
+      (widen)
+      (narrow-to-region (point) (save-excursion (forward-sexp) (point)))
+      (let ((varlist (letcheck-extract-variables (cadr let-form))))
+        (while varlist
+          (let* ((var (symbol-name (car varlist)))
+                 (needle (concat "\\_<" (regexp-quote var) "\\_>"))
+                 val sep)
+            (re-search-forward needle nil t)
+            ;; grab the value (should we also eval it? -- for now yes :P)
+            (save-excursion
+              (when (save-excursion
+                      (my-backward-up-list)
+                      (down-list)
+                      (looking-at needle))
+                (litable--next-sexp)
+                (setq sep (sexp-at-point))
+                (setq val (eval sep))
+                (let (o ignore mb me)
+                  (while (re-search-forward needle nil t)
+                    (setq mb (match-beginning 0))
+                    (setq me (match-end 0))
+                    ;; figure out the context here. If the sexp we're in is
+                    ;; on the exception list, move along. Maybe we shouldn't
+                    ;; censor some results though. TODO: Meditate on this
+                    (save-excursion
+                      (my-backward-up-list)
+                      (let* ((s (sexp-at-point))
+                             (ex-form (assq (car s) litable-exceptions)))
+                        (when ex-form
+                          (down-list)
+                          (forward-sexp (cdr ex-form))
+                          (when (>= (point) me)
+                            (setq ignore t)))))
+                    (when (not ignore)
+                      (setq o (make-overlay mb me))
+                      (push o dyneval-overlays)
+                      (overlay-put o 'display
+                                   (propertize
+                                    ;; extract this format into customize
+                                    (concat var "{"
+                                            (prin1-to-string val) "}")
+                                    'face
+                                    'font-lock-type-face)))
+                    (setq ignore nil)))))
+            (!cdr varlist)))))))
+
+(defun litable--next-sexp ()
+  (ignore-errors
+    (forward-sexp))
+  (ignore-errors
+    (forward-sexp))
+  (ignore-errors
+    (backward-sexp)))
 
 (defun my-update-defs (&optional a b c)
   (my-remove-overlays)
