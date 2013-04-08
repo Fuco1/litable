@@ -72,6 +72,7 @@ point, merge the variables into this overlay."
          ov)
     (setq ov (make-overlay (car bounds) (cdr bounds)))
     (push ov litable-overlays)
+    (overlay-put ov 'litable-let-form-type t)
     (overlay-put ov 'litable-let-form nvars)
     (overlay-put ov 'litable-let-form-prev pvars)
     (overlay-put ov 'litable-var-form-bounds var-form-bounds)))
@@ -147,6 +148,7 @@ point."
     (save-restriction
       (widen)
       (narrow-to-defun)
+      (remove-overlays (point-min) (point-max) 'litable-let-form-type t)
       (goto-char (point-min))
       (while (re-search-forward "(let\\*?" nil t)
         (save-excursion
@@ -240,9 +242,14 @@ If depth = 0, also evaluate the current form and print the result."
                       (let (o)
                         (setq o (make-overlay mb me))
                         (push o litable-overlays)
+                        (litable--set-overlay-priority o)
                         (overlay-put o 'display
                                      (propertize
                                       ;; TODO: extract this format into customize
+                                      ;; TODO: customize max-length
+                                      ;; for the subexpression, then
+                                      ;; cut off and replace with
+                                      ;; "bla..."
                                       (concat ms "{"
                                               (prin1-to-string (cdr (assoc ms subs))) "}")
                                       'face
@@ -263,13 +270,17 @@ If depth = 0, also evaluate the current form and print the result."
         ;; TODO: make the face customizable
         (litable--print-result (eval form) ostart 'font-lock-warning-face)))))
 
+;; TODO: shorten the result if too long? Add customize limit for
+;; cut-off. Maybe echo the full thing in the echo area/print in msg
+;; log <- maybe not a good idea, it will produce tons of spam.
 (defun litable--print-result (result pos face)
   "Print the RESULT of evaluating form at POS.
 Fontify the result using FACE."
   (let ((o (make-overlay pos pos)))
     (push o litable-overlays)
+    (litable--set-result-overlay-priority o)
     (overlay-put o
-                 'after-string
+                 'before-string
                  (propertize
                   ;; TODO: extract this format into customize
                   (format " => %s" result)
@@ -310,12 +321,31 @@ I got tired of having to move outside the string to use it."
                     (sexp-at-point))))
         (litable-find-function-subs-arguments form)))))
 
+;; TODO: if the same function is eval'd twice, also all the overlays
+;; are created twice. Maybe we should keep an alist (defun . overlays
+;; in defun) and reuse/update them.  But, until we hit performance
+;; issues, doesn't matter -- for now fixed with priorities.
 (defvar litable-overlays nil)
+
+(defvar litable-overlay-priority 0)
+
+(defvar litable-result-overlay-priority 0)
+
+(defun litable--set-overlay-priority (overlay)
+  (setq litable-overlay-priority (1+ litable-overlay-priority))
+  (overlay-put overlay 'priority litable-overlay-priority))
+
+(defun litable--set-result-overlay-priority (overlay)
+  (setq litable-result-overlay-priority (1+ litable-result-overlay-priority))
+  (overlay-put overlay 'priority litable-result-overlay-priority))
 
 (defun litable-remove-overlays ()
   (--each litable-overlays (delete-overlay it))
-  (setq litable-overlays nil))
+  (setq litable-overlays nil)
+  (setq litable-overlay-priority 0)
+  (setq litable-result-overlay-priority 0))
 
+;; TODO: make into minor-mode
 (defun litable-init ()
   "Initialize litable in the buffer."
   (interactive)
