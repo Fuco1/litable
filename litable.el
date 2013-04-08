@@ -35,6 +35,10 @@
 (require 'dash)
 (require 'thingatpt)
 
+;;;;; global todo
+;; 1. investigate: http://lists.gnu.org/archive/html/gnu-emacs-sources/2009-04/msg00032.html
+;;    and merge relevant parts.
+
 (defvar litable-exceptions '(
                              (setq . 2)
                              )
@@ -148,6 +152,10 @@ point."
     (save-restriction
       (widen)
       (narrow-to-defun)
+      ;; TODO: this can be made more efficient somehow -- just reuse
+      ;; the overlays, or keep them be and skip evaling this function
+      ;; alltogether. Will need a list of already "instrumented"
+      ;; functions somewhere.
       (remove-overlays (point-min) (point-max) 'litable-let-form-type t)
       (goto-char (point-min))
       (while (re-search-forward "(let\\*?" nil t)
@@ -181,6 +189,8 @@ point."
 ;; - maybe add different colors for different arguments that get
 ;;   substituted. This might result in rainbows sometimes, maybe
 ;;   undersirable
+;; TODO: general warning: LONGASS FUNCTION! Refactor this into
+;; something more managable.
 (defun litable-find-function-subs-arguments (form &optional depth)
   "Find the definition of \"form\" and substitute the arguments.
 
@@ -276,6 +286,12 @@ If depth = 0, also evaluate the current form and print the result."
         ;; TODO: make the face customizable
         (litable--print-result (eval form) ostart 'font-lock-warning-face)))))
 
+;; TODO: both print-result and print-input should accumulate the
+;; results in a variable (for each defun? -- alist?) and then only
+;; print int in single overlay after all the updating is done
+;; (i.e. when the final result is printed as well). Right now, each
+;; input/output has its own overlay.
+
 ;; TODO: shorten the result if too long? Add customize limit for
 ;; cut-off. Maybe echo the full thing in the echo area/print in msg
 ;; log <- maybe not a good idea, it will produce tons of spam.
@@ -299,6 +315,14 @@ Fontify the input using FACE."
     (push o litable-overlays)
     (litable--set-result-overlay-priority o)
     (overlay-put o
+                 ;; TODO: add customize to reverse the order of input args. Now it
+                 ;; resemples LIFO, should be FIFO!
+                 ;;
+                 ;; (defun foo (x) <= (- 10 5) <= 2
+                 ;;   (1+ x)) => 6 => 3
+                 ;;
+                 ;; (+ (foo (- 10 5)) (foo 2) 3 4) => 16
+                 ;; before-string <-> after-string
                  'before-string
                  (propertize
                   ;; TODO: extract this format into customize
@@ -370,6 +394,7 @@ I got tired of having to move outside the string to use it."
   (interactive)
   (add-hook 'after-change-functions 'litable-update-defs nil t))
 
+;; TODO: also get rid of overlays!
 (defun litable-stop ()
   "Stop litable in the buffer."
   (interactive)
