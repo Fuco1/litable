@@ -60,14 +60,22 @@ point, merge the variables into this overlay."
   (setq point (or point (point)))
   (let* ((let-form (sexp-at-point))
          (bounds (bounds-of-thing-at-point 'sexp))
-         (cvars (letcheck-extract-variables (cadr let-form)))
-         (nvars (litable--merge-variables
+         (var-form-bounds (save-excursion
+                            (down-list)
+                            (forward-list)
+                            (backward-list)
+                            (bounds-of-thing-at-point 'sexp)))
+         (cvars (letcheck-extract-variables (cadr let-form))) ; vars defined in current form
+         (pvars (litable-get-let-bound-variables point t)) ; vars defined in the very previous form
+         (nvars (litable--merge-variables ; merged vars
                  (litable--overlays-at point)
                  cvars))
          ov)
     (setq ov (make-overlay (car bounds) (cdr bounds)))
     (push ov litable-overlays)
-    (overlay-put ov 'litable-let-form nvars)))
+    (overlay-put ov 'litable-let-form nvars)
+    (overlay-put ov 'litable-let-form-prev pvars)
+    (overlay-put ov 'litable-var-form-bounds var-form-bounds)))
 
 (defun litable--overlays-at (&optional pos)
   "Simple wrapper of `overlays-at' to get only let-form overlays
@@ -94,16 +102,31 @@ point."
       (--reduce (if (< (litable--get-overlay-length it)
                        (litable--get-overlay-length acc)) it acc) overlays)))))
 
+(defun litable--in-var-form-p (&optional pos)
+  "Return non-nil if POS is inside a var-form of some let-form."
+  (setq pos (or pos (point)))
+  (let* ((active (litable--get-active-overlay pos))
+         (bounds (and active (overlay-get active 'litable-var-form-bounds))))
+    (when bounds
+      (and (> pos (car bounds))
+           (< pos (cdr bounds))))))
+
 (defun litable--merge-variables (overlays varlist)
   "Merge the varlist with the variables stored in overlays."
   (let ((varlists (--map (overlay-get it 'litable-let-form) overlays)))
     (-distinct (-union (-flatten (-concat varlists)) varlist))))
 
-(defun litable-get-let-bound-variables (&optional point)
+(defun litable-get-let-bound-variables (&optional point symbols)
   "Get a list of let-bound variables at POINT."
   (let ((active (litable--get-active-overlay point)))
     (when active
-     (--map (symbol-name it) (overlay-get active 'litable-let-form)))))
+      (--map (if symbols it (symbol-name it)) (overlay-get active 'litable-let-form)))))
+
+(defun litable-get-let-bound-parent-variables (&optional point)
+  "Get a list of let-bound variables in the parent form at POINT."
+  (let ((active (litable--get-active-overlay point)))
+    (when active
+     (--map (symbol-name it) (overlay-get active 'litable-let-form-prev)))))
 
 (defun litable-annotate-let-forms (&optional point)
   "Annotate all let and let* forms in the defun at point."
@@ -168,7 +191,6 @@ If depth = 0, also evaluate the current form and print the result."
                     (setq mb (match-beginning 0))
                     (setq me (match-end 0))
                     (setq ms (match-string 0))
-
                     ;; figure out the context here. If the sexp we're in is
                     ;; on the exception list, move along. Maybe we shouldn't
                     ;; censor some results though. TODO: Meditate on this
@@ -182,8 +204,20 @@ If depth = 0, also evaluate the current form and print the result."
                           (when (>= (point) me)
                             (setq ignore t)))))
                     ;; test the let form
-                    (let ((bound (litable-get-let-bound-variables)))
-                      (when (member ms bound)
+                    (let ((bound (litable-get-let-bound-variables))
+                          (bound-p (litable-get-let-bound-parent-variables))
+                          (in-var-form (litable--in-var-form-p)))
+                      (when (and (member ms bound)
+                                 (not (and (not (member ms bound-p))
+                                           in-var-form
+                                           ;; we can still be at the "definition"
+                                           ;; instance, that is: (>x< (blabla x)). This
+                                           ;; should not get replaced.
+                                           (/= me (save-excursion
+                                                    (litable-backward-up-list)
+                                                    (down-list)
+                                                    (forward-sexp)
+                                                    (point))))))
                         (setq ignore t)))
                     (unless ignore
                       (let (o)
@@ -223,61 +257,6 @@ Fontify the result using FACE."
                   ;; TODO: extract this format into customize
                   (format " => %s" result)
                   'face face))))
-
-;; UNUSED -- figure out a better way to do this
-(defun litable-do-let-form-substitution (let-form)
-  "Replace stuff in let form (let* does not work yet)."
-  (save-excursion
-    (save-restriction
-      (widen)
-      (narrow-to-region (point) (save-excursion (forward-sexp) (point)))
-      (let ((varlist (letcheck-extract-variables (cadr let-form))))
-        (while varlist
-          (let* ((var (symbol-name (car varlist)))
-                 (needle (concat "\\_<" (regexp-quote var) "\\_>"))
-                 val sep)
-            (re-search-forward needle nil t)
-            (save-excursion
-              (when (save-excursion
-                      (my-backward-up-list)
-                      (down-list)
-                      (looking-at needle))
-                (litable--next-sexp)
-                (setq sep (sexp-at-point))
-                ;; TODO: in this sexp, a value from above can be
-                ;; technically substituted -- this is the let
-                ;; definition
-                (forward-sexp)
-                ;;(setq val (eval sep))
-                (setq val sep)
-                (let (o ignore mb me)
-                  (while (re-search-forward needle nil t)
-                    (setq mb (match-beginning 0))
-                    (setq me (match-end 0))
-                    ;; figure out the context here. If the sexp we're in is
-                    ;; on the exception list, move along. Maybe we shouldn't
-                    ;; censor some results though. TODO: Meditate on this
-                    (save-excursion
-                      (my-backward-up-list)
-                      (let* ((s (sexp-at-point))
-                             (ex-form (assq (car s) litable-exceptions)))
-                        (when ex-form
-                          (down-list)
-                          (forward-sexp (cdr ex-form))
-                          (when (>= (point) me)
-                            (setq ignore t)))))
-                    (when (not ignore)
-                      (setq o (make-overlay mb me))
-                      (push o litable-overlays)
-                      (overlay-put o 'display
-                                   (propertize
-                                    ;; extract this format into customize
-                                    (concat var "{"
-                                            (prin1-to-string val) "}")
-                                    'face
-                                    'font-lock-type-face)))
-                    (setq ignore nil)))))
-            (!cdr varlist)))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
