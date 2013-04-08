@@ -5,9 +5,9 @@
 ;; Author: Matus Goljer <matus.goljer@gmail.com>
 ;; Maintainer: Matus Goljer <matus.goljer@gmail.com>
 ;; Keywords: lisp
-;; Version: 0.0.20130407
+;; Version: 0.0.20130408
 ;; Created: 8th April 2013
-;; Package-requires: ((dash "1.1.0") (letcheck "0.2"))
+;; Package-requires: ((dash "1.1.0"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -33,7 +33,6 @@
 ;;; Code:
 
 (require 'dash)
-(require 'letcheck)
 (require 'thingatpt)
 
 (defvar litable-exceptions '(
@@ -65,7 +64,7 @@ point, merge the variables into this overlay."
                             (forward-list)
                             (backward-list)
                             (bounds-of-thing-at-point 'sexp)))
-         (cvars (letcheck-extract-variables (cadr let-form))) ; vars defined in current form
+         (cvars (litable--extract-variables (cadr let-form))) ; vars defined in current form
          (pvars (litable-get-let-bound-variables point t)) ; vars defined in the very previous form
          (nvars (litable--merge-variables ; merged vars
                  (litable--overlays-at point)
@@ -76,6 +75,19 @@ point, merge the variables into this overlay."
     (overlay-put ov 'litable-let-form nvars)
     (overlay-put ov 'litable-let-form-prev pvars)
     (overlay-put ov 'litable-var-form-bounds var-form-bounds)))
+
+(defun litable--extract-variables (varlist)
+  "Extract the variable names from VARLIST.
+VARLIST is a list of the same format `let' accept as first
+argument."
+  (let (vars)
+    (while varlist
+      (let ((current (car varlist)))
+        (pop varlist)
+        (if (listp current)
+            (push (car current) vars)
+          (push current vars))))
+    (nreverse vars)))
 
 (defun litable--overlays-at (&optional pos)
   "Simple wrapper of `overlays-at' to get only let-form overlays
