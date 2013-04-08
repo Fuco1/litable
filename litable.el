@@ -34,6 +34,7 @@
 
 (require 'dash)
 (require 'letcheck)
+(require 'thingatpt)
 
 (defvar litable-exceptions '(
                              (setq . 2)
@@ -46,99 +47,166 @@ For example:
 
   (setq . 2) ;; first argument is target name, do not substitute.")
 
-;; TODO:
-;; - split this monster into managable pieces!
-;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; let-form annotation
+
+(defun litable--annotate-let-form (&optional point)
+  "Annotate the let form following point.
+
+Add an overlay over the let form that will keep track of the
+variables bound there.  If an overlay is already oresent around
+point, merge the variables into this overlay."
+  (setq point (or point (point)))
+  (let* ((let-form (sexp-at-point))
+         (bounds (bounds-of-thing-at-point 'sexp))
+         (cvars (letcheck-extract-variables (cadr let-form)))
+         (nvars (litable--merge-variables
+                 (litable--overlays-at point)
+                 cvars))
+         ov)
+    (setq ov (make-overlay (car bounds) (cdr bounds)))
+    (push ov litable-overlays)
+    (overlay-put ov 'litable-let-form nvars)))
+
+(defun litable--overlays-at (&optional pos)
+  "Simple wrapper of `overlays-at' to get only let-form overlays
+from litable."
+  (--filter (overlay-get it 'litable-let-form) (overlays-at (or pos (point)))))
+
+(defun litable--point-in-overlay-p (overlay)
+  "Return t if point is in OVERLAY."
+  (and (< (point) (overlay-end overlay))
+       (> (point) (overlay-start overlay))))
+
+(defun litable--get-overlay-length (overlay)
+  "Compute the length of OVERLAY."
+  (- (overlay-end overlay) (overlay-start overlay)))
+
+(defun litable--get-active-overlay (&optional pos)
+  "Get active overlay.  Active overlay is the shortest overlay at
+point."
+  (let ((overlays (litable--overlays-at pos)))
+    (cond
+     ((not overlays) nil)
+     ((not (cdr overlays)) (car overlays))
+     (t
+      (--reduce (if (< (litable--get-overlay-length it)
+                       (litable--get-overlay-length acc)) it acc) overlays)))))
+
+(defun litable--merge-variables (overlays varlist)
+  "Merge the varlist with the variables stored in overlays."
+  (let ((varlists (--map (overlay-get it 'litable-let-form) overlays)))
+    (-distinct (-union (-flatten (-concat varlists)) varlist))))
+
+(defun litable-get-let-bound-variables (&optional point)
+  "Get a list of let-bound variables at POINT."
+  (let ((active (litable--get-active-overlay point)))
+    (when active
+     (--map (symbol-name it) (overlay-get active 'litable-let-form)))))
+
+(defun litable-annotate-let-forms (&optional point)
+  "Annotate all let and let* forms in the defun at point."
+  (setq point (or point (point)))
+  (save-excursion
+    (save-restriction
+      (widen)
+      (narrow-to-defun)
+      (goto-char (point-min))
+      (while (re-search-forward "(let\\*?" nil t)
+        (save-excursion
+          (goto-char (match-beginning 0))
+          (litable--annotate-let-form))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; argument propagation in the defuns
+
+(defun litable--make-subs-list (arg-names values)
+  (let (r)
+    (--each (-zip arg-names values)
+      ;; do we want to eval here? Make it a customizable option!
+      (!cons (cons (symbol-name (car it)) (eval (cdr it))) r))
+    r))
+
 ;; - maybe add different colors for different arguments that get
 ;;   substituted. This might result in rainbows sometimes, maybe
 ;;   undersirable
 (defun litable-find-function-subs-arguments (form &optional depth)
-  ;; first thing in form is the function name
+  "Find the definition of \"form\" and substitute the arguments.
+
+If depth = 0, also evaluate the current form and print the result."
   (setq depth (or depth 0))
   (let* ((symbol (and (listp form) (car form)))
          (name (symbol-name symbol))
-        (cur-param-index 1)
-        args cur-param-name)
+         subs args needle)
     (when symbol
+      ;; recursively evaluate the arguments first
+      (--each (cdr form) (litable-find-function-subs-arguments it (1+ depth)))
       (save-excursion
         (save-restriction
           (widen)
           (goto-char 1)
-          (when (re-search-forward (regexp-quote (concat "(defun " name)) nil t)
-            ;; replace the arguments. The next form is the argument form
-            (forward-list) (backward-list)
-            (setq args (sexp-at-point))
-            (save-restriction
-              (widen)
-              (narrow-to-defun)
-              (while args
-                (goto-char (point-min))
-                (setq cur-param-name (symbol-name (car args)))
-                ;; add support for &rest too. What about keywords?
-                (when (equal cur-param-name "&optional")
-                  (!cdr args)
-                  (setq cur-param-name (symbol-name (car args))))
-                ;; also augument the current form?
-                (my-find-function-subs-arguments (nth cur-param-index form) (1+ depth))
-                (let (o ignore mb me)
-                  (while (re-search-forward (concat "\\_<" (regexp-quote cur-param-name) "\\_>") nil t)
-                    (setq mb (match-beginning 0))
-                    (setq me (match-end 0))
-                    ;; figure out the context here. If the sexp we're in is
-                    ;; on the exception list, move along. Maybe we shouldn't
-                    ;; censor some results though. TODO: Meditate on this
-                    (save-excursion
-                      (my-backward-up-list)
-                      (let* ((s (sexp-at-point))
-                             (ex-form (assq (car s) litable-exceptions)))
-                        (when ex-form
-                          (down-list)
-                          (forward-sexp (cdr ex-form))
-                          (when (>= (point) me)
-                            (setq ignore t)))))
-                    ;; are we inside a let form? If so, we need to get
-                    ;; the correct value for the argument. For now,
-                    ;; just substitute the values inside the let if
-                    ;; the variable is the same as the argument. Do we
-                    ;; want to resolve the let forms always? Might be
-                    ;; useful, but adds confision and the definitions
-                    ;; can't be eval'd anyway, so it'd just copy forms
-                    ;; = ugly. Maybe don't even do anything (add a customize?)
-                    ;; depends on `letcheck' library (see top of the file)
-                    (save-excursion
-                      ;; this jumps in front
-                      (let* ((let-form (letcheck-get-let-form))
-                             (varlist (and let-form (letcheck-extract-variables (cadr let-form)))))
-                        (when (and let-form
-                                   (member cur-param-name (mapcar 'symbol-name varlist)))
-                          (setq ignore t)
-                          ;; instead do the let-form substitution.
-                          (litable-do-let-form-substitution let-form)
-                          (forward-sexp))))
-                    (when (not ignore)
-                      (setq o (make-overlay mb me))
-                      (push o dyneval-overlays)
-                      (overlay-put o 'display
-                                   (propertize
-                                    ;; TODO: extract this format into customize
-                                    (concat cur-param-name "{"
-                                            (prin1-to-string (nth cur-param-index form)) "}")
-                                    'face
-                                    'font-lock-type-face)))
-                    (setq ignore nil)))
-                (!cdr args)
-                (setq cur-param-index (1+ cur-param-index))))))))
+          (when (re-search-forward (regexp-quote (concat "(defun " name)) nil t))
+          (forward-list) (backward-list)
+          (setq args (->> (sexp-at-point)
+                       (delete '&optional)
+                       (delete '&rest)))
+          ;; build the symbol-name <-> value alist
+          (setq subs (litable--make-subs-list args (cdr form)))
+          (save-restriction
+            (narrow-to-defun)
+            (litable-annotate-let-forms)
+            (setq needle
+                  (concat "\\_<"
+                          (regexp-opt (--map (regexp-quote (symbol-name it)) args))
+                          "\\_>"))
+            (let (mb me ms ignore)
+              (while (re-search-forward needle nil t)
+                (setq mb (match-beginning 0))
+                (setq me (match-end 0))
+                (setq ms (match-string 0))
+
+                ;; figure out the context here. If the sexp we're in is
+                ;; on the exception list, move along. Maybe we shouldn't
+                ;; censor some results though. TODO: Meditate on this
+                (save-excursion
+                  (litable-backward-up-list)
+                  (let* ((s (sexp-at-point))
+                         (ex-form (assq (car s) litable-exceptions)))
+                    (when ex-form
+                      (down-list)
+                      (forward-sexp (cdr ex-form))
+                      (when (>= (point) me)
+                        (setq ignore t)))))
+                ;; test the let form
+                (let ((bound (litable-get-let-bound-variables)))
+                  (when (member ms bound)
+                    (setq ignore t)))
+                (unless ignore
+                  (let (o)
+                    (setq o (make-overlay mb me))
+                    (push o litable-overlays)
+                    (overlay-put o 'display
+                                 (propertize
+                                  ;; TODO: extract this format into customize
+                                  (concat ms "{"
+                                          (prin1-to-string (cdr (assoc ms subs))) "}")
+                                  'face
+                                  'font-lock-type-face))))
+                (setq ignore nil)))))))
     (when (and (= depth 0)
                (nth 1 (syntax-ppss)))
       (let ((ostart (save-excursion (end-of-line) (point))))
-        (setq dyneval-result-overlay (make-overlay ostart ostart))
-        (overlay-put dyneval-result-overlay
+        (setq litable-result-overlay (make-overlay ostart ostart))
+        (overlay-put litable-result-overlay
                      'after-string
                      (propertize
                       ;; TODO: extract this format into customize
                       (format " => %s" (eval form))
                       'face 'font-lock-warning-face))))))
 
+;; UNUSED -- figure out a better way to do this
 (defun litable-do-let-form-substitution (let-form)
   "Replace stuff in let form (let* does not work yet)."
   (save-excursion
@@ -182,7 +250,7 @@ For example:
                             (setq ignore t)))))
                     (when (not ignore)
                       (setq o (make-overlay mb me))
-                      (push o dyneval-overlays)
+                      (push o litable-overlays)
                       (overlay-put o 'display
                                    (propertize
                                     ;; extract this format into customize
@@ -193,6 +261,10 @@ For example:
                     (setq ignore nil)))))
             (!cdr varlist)))))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; navigation
+
 (defun litable--next-sexp ()
   (ignore-errors
     (forward-sexp))
@@ -200,15 +272,6 @@ For example:
     (forward-sexp))
   (ignore-errors
     (backward-sexp)))
-
-(defun litable-update-defs (&optional a b c)
-  (litable-remove-overlays)
-  (when a
-    (ignore-errors
-      (let ((form (save-excursion
-                    (while (/= (car (syntax-ppss)) 0) (litable-backward-up-list))
-                    (sexp-at-point))))
-        (litable-find-function-subs-arguments form)))))
 
 ;; stolen from mastering emacs comments
 (defun litable-backward-up-list ()
@@ -220,16 +283,29 @@ I got tired of having to move outside the string to use it."
       (backward-char)))
   (backward-up-list))
 
-(defvar dyneval-overlays nil)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; updating the overlays
 
-(defvar dyneval-result-overlay nil)
+(defun litable-update-defs (&optional a b c)
+  (litable-remove-overlays)
+  (when a
+    (ignore-errors
+      (let ((form (save-excursion
+                    (while (/= (car (syntax-ppss)) 0) (litable-backward-up-list))
+                    (sexp-at-point))))
+        (litable-find-function-subs-arguments form)))))
+
+(defvar litable-overlays nil)
+
+(defvar litable-result-overlay nil)
 
 (defun litable-remove-overlays ()
-  (--each dyneval-overlays (delete-overlay it))
-  (setq dyneval-overlays nil)
-  (when dyneval-result-overlay
-    (delete-overlay dyneval-result-overlay)
-    (setq dyneval-result-overlay nil)))
+  (--each litable-overlays (delete-overlay it))
+  (setq litable-overlays nil)
+  (when litable-result-overlay
+    (delete-overlay litable-result-overlay)
+    (setq litable-result-overlay nil)))
 
 (defun litable-init ()
   "Initialize litable in the buffer."
