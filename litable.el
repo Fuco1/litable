@@ -195,6 +195,7 @@ If depth = 0, also evaluate the current form and print the result."
                                       (concat ms "{"
                                               (prin1-to-string (cdr (assoc ms subs))) "}")
                                       'face
+                                      ;; TODO: make the face customizable
                                       'font-lock-type-face))))
                     (setq ignore nil)))
                 ;; if depth > 0 means we're updating a defun, print the
@@ -203,26 +204,25 @@ If depth = 0, also evaluate the current form and print the result."
                   (save-excursion
                     (end-of-defun)
                     (backward-char)
-                    (let* ((ostart (point))
-                           (o (make-overlay ostart ostart)))
-                      (push o litable-overlays)
-                      (overlay-put o
-                                   'after-string
-                                   (propertize
-                                    ;; TODO: extract this format into customize
-                                    (format " => %s" (eval form))
-                                    'face 'font-lock-constant-face)))))))))))
+                    ;; TODO: make the face customizable
+                    (litable--print-result (eval form) (point) 'font-lock-constant-face)))))))))
     (when (and (= depth 0)
                (nth 1 (syntax-ppss)))
-      (let* ((ostart (save-excursion (end-of-line) (point)))
-             (o (make-overlay ostart ostart)))
-        (push o litable-overlays)
-        (overlay-put o
-                     'after-string
-                     (propertize
-                      ;; TODO: extract this format into customize
-                      (format " => %s" (eval form))
-                      'face 'font-lock-warning-face))))))
+      (let ((ostart (save-excursion (end-of-line) (point))))
+        ;; TODO: make the face customizable
+        (litable--print-result (eval form) ostart 'font-lock-warning-face)))))
+
+(defun litable--print-result (result pos face)
+  "Print the RESULT of evaluating form at POS.
+Fontify the result using FACE."
+  (let ((o (make-overlay pos pos)))
+    (push o litable-overlays)
+    (overlay-put o
+                 'after-string
+                 (propertize
+                  ;; TODO: extract this format into customize
+                  (format " => %s" result)
+                  'face face))))
 
 ;; UNUSED -- figure out a better way to do this
 (defun litable-do-let-form-substitution (let-form)
