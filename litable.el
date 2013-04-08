@@ -138,68 +138,86 @@ point."
 If depth = 0, also evaluate the current form and print the result."
   (setq depth (or depth 0))
   (let* ((symbol (and (listp form) (car form)))
-         (name (symbol-name symbol))
+         (name (and (symbolp symbol) (symbol-name symbol)))
          subs args needle)
-    (when symbol
+    (when (and symbol
+               (symbolp symbol))
       ;; recursively evaluate the arguments first
       (--each (cdr form) (litable-find-function-subs-arguments it (1+ depth)))
-      (save-excursion
-        (save-restriction
-          (widen)
-          (goto-char 1)
-          (when (re-search-forward (regexp-quote (concat "(defun " name)) nil t))
-          (forward-list) (backward-list)
-          (setq args (->> (sexp-at-point)
-                       (delete '&optional)
-                       (delete '&rest)))
-          ;; build the symbol-name <-> value alist
-          (setq subs (litable--make-subs-list args (cdr form)))
+      (when (not (subrp (symbol-function symbol)))
+        (save-excursion
           (save-restriction
-            (narrow-to-defun)
-            (litable-annotate-let-forms)
-            (setq needle
-                  (concat "\\_<"
-                          (regexp-opt (--map (regexp-quote (symbol-name it)) args))
-                          "\\_>"))
-            (let (mb me ms ignore)
-              (while (re-search-forward needle nil t)
-                (setq mb (match-beginning 0))
-                (setq me (match-end 0))
-                (setq ms (match-string 0))
+            (widen)
+            (goto-char 1)
+            (when (re-search-forward (regexp-quote (concat "(defun " name)) nil t)
+              (forward-list) (backward-list)
+              (setq args (->> (sexp-at-point)
+                           (delete '&optional)
+                           (delete '&rest)))
+              ;; build the symbol-name <-> value alist
+              (setq subs (litable--make-subs-list args (cdr form)))
+              (save-restriction
+                (narrow-to-defun)
+                (litable-annotate-let-forms)
+                (setq needle
+                      (concat "\\_<"
+                              (regexp-opt (--map (regexp-quote (symbol-name it)) args))
+                              "\\_>"))
+                (let (mb me ms ignore)
+                  (while (re-search-forward needle nil t)
+                    (setq mb (match-beginning 0))
+                    (setq me (match-end 0))
+                    (setq ms (match-string 0))
 
-                ;; figure out the context here. If the sexp we're in is
-                ;; on the exception list, move along. Maybe we shouldn't
-                ;; censor some results though. TODO: Meditate on this
-                (save-excursion
-                  (litable-backward-up-list)
-                  (let* ((s (sexp-at-point))
-                         (ex-form (assq (car s) litable-exceptions)))
-                    (when ex-form
-                      (down-list)
-                      (forward-sexp (cdr ex-form))
-                      (when (>= (point) me)
-                        (setq ignore t)))))
-                ;; test the let form
-                (let ((bound (litable-get-let-bound-variables)))
-                  (when (member ms bound)
-                    (setq ignore t)))
-                (unless ignore
-                  (let (o)
-                    (setq o (make-overlay mb me))
-                    (push o litable-overlays)
-                    (overlay-put o 'display
-                                 (propertize
-                                  ;; TODO: extract this format into customize
-                                  (concat ms "{"
-                                          (prin1-to-string (cdr (assoc ms subs))) "}")
-                                  'face
-                                  'font-lock-type-face))))
-                (setq ignore nil)))))))
+                    ;; figure out the context here. If the sexp we're in is
+                    ;; on the exception list, move along. Maybe we shouldn't
+                    ;; censor some results though. TODO: Meditate on this
+                    (save-excursion
+                      (litable-backward-up-list)
+                      (let* ((s (sexp-at-point))
+                             (ex-form (assq (car s) litable-exceptions)))
+                        (when ex-form
+                          (down-list)
+                          (forward-sexp (cdr ex-form))
+                          (when (>= (point) me)
+                            (setq ignore t)))))
+                    ;; test the let form
+                    (let ((bound (litable-get-let-bound-variables)))
+                      (when (member ms bound)
+                        (setq ignore t)))
+                    (unless ignore
+                      (let (o)
+                        (setq o (make-overlay mb me))
+                        (push o litable-overlays)
+                        (overlay-put o 'display
+                                     (propertize
+                                      ;; TODO: extract this format into customize
+                                      (concat ms "{"
+                                              (prin1-to-string (cdr (assoc ms subs))) "}")
+                                      'face
+                                      'font-lock-type-face))))
+                    (setq ignore nil)))
+                ;; if depth > 0 means we're updating a defun, print the
+                ;; end result after the end of the defun
+                (when (> depth 0)
+                  (save-excursion
+                    (end-of-defun)
+                    (backward-char)
+                    (let* ((ostart (point))
+                           (o (make-overlay ostart ostart)))
+                      (push o litable-overlays)
+                      (overlay-put o
+                                   'after-string
+                                   (propertize
+                                    ;; TODO: extract this format into customize
+                                    (format " => %s" (eval form))
+                                    'face 'font-lock-constant-face)))))))))))
     (when (and (= depth 0)
                (nth 1 (syntax-ppss)))
-      (let ((ostart (save-excursion (end-of-line) (point))))
-        (setq litable-result-overlay (make-overlay ostart ostart))
-        (overlay-put litable-result-overlay
+      (let* ((ostart (save-excursion (end-of-line) (point)))
+             (o (make-overlay ostart ostart)))
+        (push o litable-overlays)
+        (overlay-put o
                      'after-string
                      (propertize
                       ;; TODO: extract this format into customize
@@ -298,14 +316,9 @@ I got tired of having to move outside the string to use it."
 
 (defvar litable-overlays nil)
 
-(defvar litable-result-overlay nil)
-
 (defun litable-remove-overlays ()
   (--each litable-overlays (delete-overlay it))
-  (setq litable-overlays nil)
-  (when litable-result-overlay
-    (delete-overlay litable-result-overlay)
-    (setq litable-result-overlay nil)))
+  (setq litable-overlays nil))
 
 (defun litable-init ()
   "Initialize litable in the buffer."
