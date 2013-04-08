@@ -263,7 +263,13 @@ If depth = 0, also evaluate the current form and print the result."
                     (end-of-defun)
                     (backward-char)
                     ;; TODO: make the face customizable
-                    (litable--print-result (eval form) (point) 'font-lock-constant-face)))))))))
+                    (litable--print-result (eval form) (point) 'font-lock-constant-face)))
+                ;; TODO: make the printing of input customizable
+                (save-excursion
+                  (beginning-of-defun)
+                  (end-of-line)
+                  ;; TODO: make the face customizable
+                  (litable--print-input (cdr form) (point) 'font-lock-variable-name-face))))))))
     (when (and (= depth 0)
                (nth 1 (syntax-ppss)))
       (let ((ostart (save-excursion (end-of-line) (point))))
@@ -284,6 +290,19 @@ Fontify the result using FACE."
                  (propertize
                   ;; TODO: extract this format into customize
                   (format " => %s" result)
+                  'face face))))
+
+(defun litable--print-input (input pos face)
+  "Print the INPUT for the evaluated form at POS.
+Fontify the input using FACE."
+  (let ((o (make-overlay pos pos)))
+    (push o litable-overlays)
+    (litable--set-result-overlay-priority o)
+    (overlay-put o
+                 'before-string
+                 (propertize
+                  ;; TODO: extract this format into customize
+                  (format " <= %s" (mapconcat 'prin1-to-string input ", "))
                   'face face))))
 
 
