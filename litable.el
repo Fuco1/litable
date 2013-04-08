@@ -28,10 +28,11 @@ For example:
 (defun my-find-function-subs-arguments (form &optional depth)
   ;; first thing in form is the function name
   (setq depth (or depth 0))
-  (let ((name (symbol-name (and (listp form) (car form))))
+  (let* ((symbol (and (listp form) (car form)))
+         (name (symbol-name symbol))
         (cur-param-index 1)
         args cur-param-name)
-    (when name
+    (when symbol
       (save-excursion
         (save-restriction
           (widen)
@@ -130,8 +131,9 @@ For example:
                       (looking-at needle))
                 (litable--next-sexp)
                 (setq sep (sexp-at-point))
-                ;; in this sexp, a value from above can be technically
-                ;; substituted -- this is the let definition
+                ;; TODO: in this sexp, a value from above can be
+                ;; technically substituted -- this is the let
+                ;; definition
                 (forward-sexp)
                 ;;(setq val (eval sep))
                 (setq val sep)
