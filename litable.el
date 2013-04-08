@@ -146,11 +146,23 @@ point."
 ;; argument propagation in the defuns
 
 (defun litable--make-subs-list (arg-names values)
+  "Return the list of cons pairs with symbol name in car and value in cdr."
   (let (r)
     (--each (-zip arg-names values)
-      ;; do we want to eval here? Make it a customizable option!
+      ;; do we want to eval here? TODO: Make it a customizable option!
       (!cons (cons (symbol-name (car it)) (eval (cdr it))) r))
     r))
+
+(defun litable--in-exception-form ()
+  "Test if the point is in an exception form."
+  (save-excursion
+    (litable-backward-up-list)
+    (let* ((s (sexp-at-point))
+           (ex-form (assq (car s) litable-exceptions)))
+      (when ex-form
+        (down-list)
+        (forward-sexp (cdr ex-form))
+        (>= (point) me)))))
 
 ;; - maybe add different colors for different arguments that get
 ;;   substituted. This might result in rainbows sometimes, maybe
@@ -177,7 +189,6 @@ If depth = 0, also evaluate the current form and print the result."
               (setq args (->> (sexp-at-point)
                            (delete '&optional)
                            (delete '&rest)))
-              ;; build the symbol-name <-> value alist
               (setq subs (litable--make-subs-list args (cdr form)))
               (save-restriction
                 (narrow-to-defun)
@@ -194,16 +205,10 @@ If depth = 0, also evaluate the current form and print the result."
                     ;; figure out the context here. If the sexp we're in is
                     ;; on the exception list, move along. Maybe we shouldn't
                     ;; censor some results though. TODO: Meditate on this
-                    (save-excursion
-                      (litable-backward-up-list)
-                      (let* ((s (sexp-at-point))
-                             (ex-form (assq (car s) litable-exceptions)))
-                        (when ex-form
-                          (down-list)
-                          (forward-sexp (cdr ex-form))
-                          (when (>= (point) me)
-                            (setq ignore t)))))
-                    ;; test the let form
+                    (when (litable--in-exception-form)
+                      (setq ignore t))
+                    ;; test the let form. TODO: this will go to special
+                    ;; function when we decide to do let-def-eval?
                     (let ((bound (litable-get-let-bound-variables))
                           (bound-p (litable-get-let-bound-parent-variables))
                           (in-var-form (litable--in-var-form-p)))
