@@ -39,15 +39,7 @@
 ;; 1. investigate: http://lists.gnu.org/archive/html/gnu-emacs-sources/2009-04/msg00032.html
 ;;    and merge relevant parts.
 ;;
-;; 2. add something like "eval with enviroment". This is basically a
-;;    function of type :: [(var, value)] -> form -> result. Can we construct
-;;    the enviroment with a let macro?
-;;
-;;    (let (,@enviroment) form) ;; schematically
-;;
-;;    The enviroment will be the function arguments and the previously
-;;    let-bound values.  The globals needs also be updated with
-;;    relevant `setq' calls before the evaluation of form.
+;; 2. update free variable bindings when `setq' call is made on them.
 
 (defvar litable-exceptions '(
                              (setq . 2)
@@ -64,7 +56,7 @@ For example:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; let-form annotation
 
-(defun litable--annotate-let-form (&optional point)
+(defun litable--annotate-let-form (subs &optional point)
   "Annotate the let form following point.
 
 Add an overlay over the let form that will keep track of the
@@ -78,24 +70,17 @@ point, merge the variables into this overlay."
                             (forward-list)
                             (backward-list)
                             (bounds-of-thing-at-point 'sexp)))
-         (cvars (litable--extract-variables (cadr let-form))) ; vars defined in current form
-         (pvars (litable-get-let-bound-variables point t)) ; vars defined in the very previous form
+         (cvars (litable--extract-variables-with-defs (cadr let-form))) ; vars defined in current form
+         (pvars (litable-get-let-bound-variable-values point)) ; vars defined in the very previous form
          (nvars (litable--merge-variables ; merged vars
-                 (litable--overlays-at point)
-                 cvars))
+                 (litable--get-active-overlay point) subs cvars))
          ov)
     (setq ov (make-overlay (car bounds) (cdr bounds)))
     (push ov litable-overlays)
-    (overlay-put ov 'litable-let-form-type t)
-    ;; TODO: instead of only variables, also store their values, as
-    ;; bound by this let form (so we can substitute them instead of
-    ;; skipping the form).  So far, we can't eval forms that have
-    ;; unbound variables (or variables updated by `setq'), so just
-    ;; wrap all the execution in `ignore-errors'. But since we already
-    ;; keep a table of variables for each let form, it will propagate
-    ;; very nicely once the "eval with this enviroment" thing is
-    ;; done (see global todo 2.).
-    (overlay-put ov 'litable-let-form nvars)
+    (overlay-put ov 'litable-let-form t)
+    (overlay-put ov 'litable-let-form-type (car let-form))
+    ;; TODO: this still ignores the `setq' updated local bindings.
+    (overlay-put ov 'litable-let-form-cur nvars)
     (overlay-put ov 'litable-let-form-prev pvars)
     (overlay-put ov 'litable-var-form-bounds var-form-bounds)))
 
@@ -110,6 +95,19 @@ argument."
         (if (listp current)
             (push (car current) vars)
           (push current vars))))
+    (nreverse vars)))
+
+(defun litable--extract-variables-with-defs (varlist)
+  "Extract the variable names from VARLIST.
+VARLIST is a list of the same format `let' accept as first
+argument."
+  (let (vars)
+    (while varlist
+      (let ((current (car varlist)))
+        (pop varlist)
+        (if (listp current)
+            (push (cons (car current) (cdr current)) vars)
+          (push (cons current nil) vars))))
     (nreverse vars)))
 
 (defun litable--overlays-at (&optional pos)
@@ -146,24 +144,29 @@ point."
       (and (> pos (car bounds))
            (< pos (cdr bounds))))))
 
-(defun litable--merge-variables (overlays varlist)
-  "Merge the varlist with the variables stored in overlays."
-  (let ((varlists (--map (overlay-get it 'litable-let-form) overlays)))
-    (-distinct (-union (-flatten (-concat varlists)) varlist))))
-
 (defun litable-get-let-bound-variables (&optional point symbols)
   "Get a list of let-bound variables at POINT."
   (let ((active (litable--get-active-overlay point)))
     (when active
-      (--map (if symbols it (symbol-name it)) (overlay-get active 'litable-let-form)))))
+      (--map (if symbols (car it) (symbol-name (car it))) (overlay-get active 'litable-let-form-cur)))))
 
-(defun litable-get-let-bound-parent-variables (&optional point)
+(defun litable-get-let-bound-parent-variables (&optional point symbols)
   "Get a list of let-bound variables in the parent form at POINT."
   (let ((active (litable--get-active-overlay point)))
     (when active
-     (--map (symbol-name it) (overlay-get active 'litable-let-form-prev)))))
+      (--map (if symbols (car it) (symbol-name (car it))) (overlay-get active 'litable-let-form-prev)))))
 
-(defun litable-annotate-let-forms (&optional point)
+(defun litable-get-let-bound-variable-values (&optional point)
+  (let ((active (litable--get-active-overlay point)))
+    (when active
+      (overlay-get active 'litable-let-form-cur))))
+
+(defun litable-get-let-bound-parent-variable-values (&optional point)
+  (let ((active (litable--get-active-overlay point)))
+    (when active
+      (overlay-get active 'litable-let-form-prev))))
+
+(defun litable-annotate-let-forms (subs &optional point)
   "Annotate all let and let* forms in the defun at point."
   (setq point (or point (point)))
   (save-excursion
@@ -174,12 +177,55 @@ point."
       ;; the overlays, or keep them be and skip evaling this function
       ;; alltogether. Will need a list of already "instrumented"
       ;; functions somewhere.
-      (remove-overlays (point-min) (point-max) 'litable-let-form-type t)
+      (remove-overlays (point-min) (point-max) 'litable-let-form t)
       (goto-char (point-min))
       (while (re-search-forward "(let\\*?" nil t)
         (save-excursion
           (goto-char (match-beginning 0))
-          (litable--annotate-let-form))))))
+          ;; this gen error if the let form is invalid, or inside
+          ;; macro etc. Just ignore it
+          (ignore-errors (litable--annotate-let-form subs)))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; fake eval (eval with enviroment)
+
+(defun litable--fake-eval (form enviroment &optional type)
+  "Evaluate the FORM in ENVIROMENT using the enviroment binding of TYPE.
+
+TYPE can be a symbol `let' or `let*'."
+  (setq type (or type 'let))
+  (ignore-errors (eval `(,type ,enviroment ,form))))
+
+(defun litable--alist-to-list (alist)
+  "Change (a . b) into (a b)"
+  (--map (list (car it) (cdr it)) alist))
+
+(defun litable--merge-variables (overlay subs varlist)
+  "Merge the varlist with the variables stored in overlays.
+
+This will also evaluate the newly-bound variables."
+  (let* ((pvars (or (and overlay (overlay-get overlay 'litable-let-form-cur)) subs))
+         (enviroment (litable--alist-to-list pvars)))
+    ;; TODO: THIS DOESN'T WORK WITH let*!! We need to update the
+    ;; bindings one by one in that case, and merge after each update.
+    (litable--alist-merge
+     pvars
+     (mapcar (lambda (it)
+               (cons (car it)
+                     (litable--fake-eval (cadr it) enviroment 'let)))
+             varlist))))
+
+(defun litable--alist-merge (al1 al2)
+  "Destructive merge."
+  (let ((re (--map (cons (car it) (cdr it)) al1)))
+    (mapc (lambda (it)
+            (let ((c (assoc (car it) re)))
+              (if c
+                  (setcdr c (cdr it))
+                (!cons (cons (car it) (cdr it)) re))))
+          al2)
+    re))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -190,7 +236,7 @@ point."
   (let (r)
     (--each (-zip arg-names values)
       ;; do we want to eval here? TODO: Make it a customizable option!
-      (!cons (cons (symbol-name (car it)) (eval (cdr it))) r))
+      (!cons (cons (car it) (eval (cdr it))) r))
     r))
 
 (defun litable--in-exception-form ()
@@ -203,6 +249,20 @@ point."
         (down-list)
         (forward-sexp (cdr ex-form))
         (>= (point) me)))))
+
+(defun litable--at-let-variable-def-p (me)
+  "Test if the point is after a let variable definition."
+  (/= me (save-excursion
+           (litable-backward-up-list)
+           (down-list)
+           (forward-sexp)
+           (point))))
+
+(defun litable--construct-needle (variables)
+  "Return a regexp that will search for the variable symbols."
+  (concat "\\_<"
+          (regexp-opt (--map (regexp-quote (symbol-name it)) variables))
+          "\\_>"))
 
 ;; - maybe add different colors for different arguments that get
 ;;   substituted. This might result in rainbows sometimes, maybe
@@ -234,11 +294,8 @@ If depth = 0, also evaluate the current form and print the result."
               (setq subs (litable--make-subs-list args (cdr form)))
               (save-restriction
                 (narrow-to-defun)
-                (litable-annotate-let-forms)
-                (setq needle
-                      (concat "\\_<"
-                              (regexp-opt (--map (regexp-quote (symbol-name it)) args))
-                              "\\_>"))
+                (litable-annotate-let-forms subs)
+                (setq needle (litable--construct-needle args))
                 (let (mb me ms ignore)
                   (while (re-search-forward needle nil t)
                     (setq mb (match-beginning 0))
@@ -251,39 +308,35 @@ If depth = 0, also evaluate the current form and print the result."
                       (setq ignore t))
                     ;; test the let form. TODO: this will go to special
                     ;; function when we decide to do let-def-eval?
-                    (let ((bound (litable-get-let-bound-variables))
-                          (bound-p (litable-get-let-bound-parent-variables))
-                          (in-var-form (litable--in-var-form-p)))
-                      (when (and (member ms bound)
-                                 (not (and (not (member ms bound-p))
-                                           in-var-form
-                                           ;; we can still be at the "definition"
-                                           ;; instance, that is: (>x< (blabla x)). This
-                                           ;; should not get replaced.
-                                           (/= me (save-excursion
-                                                    (litable-backward-up-list)
-                                                    (down-list)
-                                                    (forward-sexp)
-                                                    (point))))))
-                        (setq ignore t)))
-                    (unless ignore
-                      (let (o)
-                        (setq o (make-overlay mb me))
-                        (push o litable-overlays)
-                        (litable--set-overlay-priority o)
-                        (overlay-put o 'display
-                                     (propertize
-                                      ;; TODO: extract this format into customize
-                                      ;; TODO: customize max-length
-                                      ;; for the subexpression, then
-                                      ;; cut off and replace with
-                                      ;; "bla..."
-                                      (concat ms "{"
-                                              (prin1-to-string (cdr (assoc ms subs))) "}")
-                                      'face
-                                      ;; TODO: make the face customizable
-                                      'font-lock-type-face))))
-                    (setq ignore nil)))
+                    (let ((in-var-form (litable--in-var-form-p)))
+                      (when in-var-form
+                        ;; we can still be at the "definition"
+                        ;; instance, that is: (>x< (blabla x)). This
+                        ;; should not get replaced by the normal value
+                        ;; but by the newly eval'd value
+                        (if (litable--at-let-variable-def-p me)
+                            (setq ignore 'let)
+                          (setq ignore 'let-def))))
+                    (cond
+                     ((eq ignore 'let)
+                      (let* ((in-var-form (litable--in-var-form-p))
+                             (vars (or (if in-var-form
+                                           (litable-get-let-bound-parent-variable-values)
+                                         (litable-get-let-bound-variable-values)) subs)))
+                        (litable--create-substitution-overlay mb me (cdr (assoc (intern ms) vars)))))
+                     ;; TODO: make this configurable too
+                     ((eq ignore 'let-def)
+                      (let ((vars (litable-get-let-bound-variable-values)))
+                        (when vars
+                          ;; TODO: make the face customizable
+                          (litable--create-substitution-overlay
+                           mb me (cdr (assoc (intern ms) vars)) 'font-lock-warning-face))))
+                     ((not ignore)
+                      (let ((vars (or (litable-get-let-bound-variable-values) subs)))
+                        (litable--create-substitution-overlay mb me (cdr (assoc (intern ms) vars))))))
+                    (setq ignore nil)
+                    (setq needle (litable--construct-needle
+                                  (or (litable-get-let-bound-variables nil t) args)))))
                 ;; if depth > 0 means we're updating a defun, print the
                 ;; end result after the end of the defun
                 (when (> depth 0)
@@ -345,6 +398,25 @@ Fontify the input using FACE."
                  (propertize
                   ;; TODO: extract this format into customize
                   (format " <= %s" (mapconcat 'prin1-to-string input ", "))
+                  'face face))))
+
+(defun litable--create-substitution-overlay (start end value &optional face)
+  "Create the overlay that shows the substituted value."
+  ;; TODO: make the face customizable
+  (setq face (or face 'font-lock-type-face))
+  (let (o)
+    (setq o (make-overlay start end))
+    (push o litable-overlays)
+    (litable--set-overlay-priority o)
+    (overlay-put o 'display
+                 (propertize
+                  ;; TODO: extract this format into customize
+                  ;; TODO: customize max-length
+                  ;; for the subexpression, then
+                  ;; cut off and replace with
+                  ;; "bla..."
+                  (concat ms "{"
+                          (prin1-to-string value) "}")
                   'face face))))
 
 
