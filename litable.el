@@ -216,8 +216,14 @@ This will also evaluate the newly-bound variables."
                      (litable--fake-eval (cadr it) enviroment 'let)))
              varlist))))
 
+;; TODO: this just sucks... make it better :P
 (defun litable--alist-merge (al1 al2)
-  "Destructive merge."
+  "Merge alists AL1 and AL2.
+
+Return a new copy independent of AL1 and AL2.
+
+If the same key is present in both alists, use the value from AL2
+in the result."
   (let ((re (--map (cons (car it) (cdr it)) al1)))
     (mapc (lambda (it)
             (let ((c (assoc (car it) re)))
@@ -346,6 +352,10 @@ If depth = 0, also evaluate the current form and print the result."
                                   (or (litable-get-let-bound-variables nil t) args)))))
                 ;; if depth > 0 means we're updating a defun, print the
                 ;; end result after the end of the defun
+                ;; TODO: add a customize to print the partial result
+                ;; also if depth = 0 (it would be same as the final
+                ;; result, but maybe the defun is on different screen
+                ;; and so it will be invisible otherwise.)
                 (when (> depth 0)
                   (save-excursion
                     (end-of-defun)
