@@ -35,9 +35,19 @@
 (require 'dash)
 (require 'thingatpt)
 
-;;;;; global todo
+;;;;; global TODO
 ;; 1. investigate: http://lists.gnu.org/archive/html/gnu-emacs-sources/2009-04/msg00032.html
 ;;    and merge relevant parts.
+;;
+;; 2. add something like "eval with enviroment". This is basically a
+;;    function of type :: [(var, value)] -> form -> result. Can we construct
+;;    the enviroment with a let macro?
+;;
+;;    (let (,@enviroment) form) ;; schematically
+;;
+;;    The enviroment will be the function arguments and the previously
+;;    let-bound values.  The globals needs also be updated with
+;;    relevant `setq' calls before the evaluation of form.
 
 (defvar litable-exceptions '(
                              (setq . 2)
@@ -77,6 +87,14 @@ point, merge the variables into this overlay."
     (setq ov (make-overlay (car bounds) (cdr bounds)))
     (push ov litable-overlays)
     (overlay-put ov 'litable-let-form-type t)
+    ;; TODO: instead of only variables, also store their values, as
+    ;; bound by this let form (so we can substitute them instead of
+    ;; skipping the form).  So far, we can't eval forms that have
+    ;; unbound variables (or variables updated by `setq'), so just
+    ;; wrap all the execution in `ignore-errors'. But since we already
+    ;; keep a table of variables for each let form, it will propagate
+    ;; very nicely once the "eval with this enviroment" thing is
+    ;; done (see global todo 2.).
     (overlay-put ov 'litable-let-form nvars)
     (overlay-put ov 'litable-let-form-prev pvars)
     (overlay-put ov 'litable-var-form-bounds var-form-bounds)))
