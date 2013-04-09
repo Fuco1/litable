@@ -236,7 +236,10 @@ This will also evaluate the newly-bound variables."
   (let (r)
     (--each (-zip arg-names values)
       ;; do we want to eval here? TODO: Make it a customizable option!
-      (!cons (cons (car it) (eval (cdr it))) r))
+      (!cons (cons (car it)
+                   (if (and (listp (cdr it)) (eq 'quote (cadr it)))
+                       (cdr it)
+                     (eval (cdr it)))) r))
     r))
 
 (defun litable--in-exception-form ()
@@ -278,7 +281,8 @@ If depth = 0, also evaluate the current form and print the result."
          (name (and (symbolp symbol) (symbol-name symbol)))
          subs args needle)
     (when (and symbol
-               (symbolp symbol))
+               (symbolp symbol)
+               (not (keywordp symbol)))
       ;; recursively evaluate the arguments first
       (--each (cdr form) (litable-find-function-subs-arguments it (1+ depth)))
       (when (not (subrp (symbol-function symbol)))
@@ -335,6 +339,9 @@ If depth = 0, also evaluate the current form and print the result."
                       (let ((vars (or (litable-get-let-bound-variable-values) subs)))
                         (litable--create-substitution-overlay mb me (cdr (assoc (intern ms) vars))))))
                     (setq ignore nil)
+                    ;; TODO: this can be precomputed and stored in the
+                    ;; let-form overlay. I think `regexp-opt' can be
+                    ;; fairly slow at times.
                     (setq needle (litable--construct-needle
                                   (or (litable-get-let-bound-variables nil t) args)))))
                 ;; if depth > 0 means we're updating a defun, print the
