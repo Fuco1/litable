@@ -504,6 +504,7 @@ I got tired of having to move outside the string to use it."
   (remove-hook 'after-change-functions 'litable-update-defs t)
   (remove-overlays))
 
+;;;###autoload
 (define-minor-mode litable-mode
   "Toggle litable-mode"
   nil                                   ; init value
@@ -511,8 +512,7 @@ I got tired of having to move outside the string to use it."
   nil                                   ; keymap
   (if litable-mode
       (litable-init)
-    (litable-stop))
-  )
+    (litable-stop)))
 
 (provide 'litable)
 
