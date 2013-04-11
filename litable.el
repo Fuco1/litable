@@ -495,18 +495,24 @@ I got tired of having to move outside the string to use it."
   (setq litable-overlay-priority 0)
   (setq litable-result-overlay-priority 0))
 
-;; TODO: make into minor-mode
 (defun litable-init ()
   "Initialize litable in the buffer."
-  (interactive)
   (add-hook 'after-change-functions 'litable-update-defs nil t))
 
-;; TODO: also get rid of overlays!
 (defun litable-stop ()
   "Stop litable in the buffer."
-  (interactive)
-  (remove-hook 'after-change-functions 'litable-update-defs t))
+  (remove-hook 'after-change-functions 'litable-update-defs t)
+  (litable-remove-overlays))
 
+;;;###autoload
+(define-minor-mode litable-mode
+  "Toggle litable-mode"
+  nil                                   ; init value
+  " litable"                            ; lighter
+  nil                                   ; keymap
+  (if litable-mode
+      (litable-init)
+    (litable-stop)))
 
 (provide 'litable)
 
