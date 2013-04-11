@@ -496,6 +496,7 @@ I got tired of having to move outside the string to use it."
   (setq litable-result-overlay-priority 0))
 
 ;; TODO: make into minor-mode
+;;;###autoload
 (defun litable-init ()
   "Initialize litable in the buffer."
   (interactive)
