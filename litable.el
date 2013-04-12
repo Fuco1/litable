@@ -56,6 +56,11 @@ For example:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; let-form annotation
 
+(defgroup litable nil
+  "On-the-fly evaluation/substitution of emacs lisp code."
+  :group 'completion
+  :prefix "litable-")
+
 (defun litable--annotate-let-form (subs &optional point)
   "Annotate the let form following point.
 
@@ -477,9 +482,15 @@ I got tired of having to move outside the string to use it."
 ;; issues, doesn't matter -- for now fixed with priorities.
 (defvar litable-overlays nil)
 
-(defvar litable-overlay-priority 0)
+(defcustom litable-overlay-priority 0
+  "Overlay priority"
+  :type 'integer
+  :group 'litable)
 
-(defvar litable-result-overlay-priority 0)
+(defcustom litable-result-overlay-priority 0
+  "Restult overlay priority"
+  :type 'integer
+  :group 'litable)
 
 (defun litable--set-overlay-priority (overlay)
   (setq litable-overlay-priority (1+ litable-overlay-priority))
@@ -495,19 +506,28 @@ I got tired of having to move outside the string to use it."
   (setq litable-overlay-priority 0)
   (setq litable-result-overlay-priority 0))
 
-;; TODO: make into minor-mode
+
+(defvar litable-mode-map (make-sparse-keymap)
+  "litable mode map.")
+
+(defcustom litable-mode-hook nil
+  "Hook for `litable-mode'."
+  :type 'hook
+  :group 'litable)
+
 ;;;###autoload
-(defun litable-init ()
-  "Initialize litable in the buffer."
-  (interactive)
-  (add-hook 'after-change-functions 'litable-update-defs nil t))
-
-;; TODO: also get rid of overlays!
-(defun litable-stop ()
-  "Stop litable in the buffer."
-  (interactive)
-  (remove-hook 'after-change-functions 'litable-update-defs t))
-
+(define-minor-mode litable-mode
+  "Litable mode"
+  :lighter " LT"
+  :keymap litable-mode-map
+  :group 'litable
+  (if litable-mode
+      (progn
+        (add-hook 'after-change-functions 'litable-update-defs nil t)
+        (run-hooks 'litable-mode-hook))
+    (progn
+      (remove-hook 'after-change-functions 'litable-update-defs t)
+      (litable-remove-overlays) ) ))
 
 (provide 'litable)
 
