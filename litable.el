@@ -41,6 +41,11 @@
 ;;
 ;; 2. update free variable bindings when `setq' call is made on them.
 
+(defgroup litable nil
+  "On-the-fly evaluation/substitution of emacs lisp code."
+  :group 'completion
+  :prefix "litable-")
+
 (defvar litable-exceptions '(
                              (setq . 2)
                              )
@@ -477,27 +482,46 @@ I got tired of having to move outside the string to use it."
 ;; issues, doesn't matter -- for now fixed with priorities.
 (defvar litable-overlays nil)
 
-(defvar litable-overlay-priority 0)
+(defcustom litable-overlay-priority 0
+  "Overlay priority"
+  :type 'integer
+  :group 'litable)
 
-(defvar litable-result-overlay-priority 0)
+(defcustom litable-result-overlay-priority 0
+  "Restult overlay priority"
+  :type 'integer
+  :group 'litable)
+
+;; internal variables
+(defvar litable--overlay-priority litable-overlay-priority)
+(defvar litable--result-overlay-priority litable-result-overlay-priority)
 
 (defun litable--set-overlay-priority (overlay)
-  (setq litable-overlay-priority (1+ litable-overlay-priority))
-  (overlay-put overlay 'priority litable-overlay-priority))
+  (setq litable--overlay-priority (1+ litable--overlay-priority))
+  (overlay-put overlay 'priority litable--overlay-priority))
 
 (defun litable--set-result-overlay-priority (overlay)
-  (setq litable-result-overlay-priority (1+ litable-result-overlay-priority))
-  (overlay-put overlay 'priority litable-result-overlay-priority))
+  (setq litable--result-overlay-priority (1+ litable--result-overlay-priority))
+  (overlay-put overlay 'priority litable--result-overlay-priority))
 
 (defun litable-remove-overlays ()
   (--each litable-overlays (delete-overlay it))
   (setq litable-overlays nil)
-  (setq litable-overlay-priority 0)
-  (setq litable-result-overlay-priority 0))
+  (setq litable--overlay-priority litable-overlay-priority)
+  (setq litable--result-overlay-priority litable-result-overlay-priority))
+
+(defvar litable-mode-map (make-sparse-keymap)
+  "litable mode map.")
+
+(defcustom litable-mode-hook nil
+  "Hook for `litable-mode'."
+  :type 'hook
+  :group 'litable)
 
 (defun litable-init ()
   "Initialize litable in the buffer."
-  (add-hook 'after-change-functions 'litable-update-defs nil t))
+  (add-hook 'after-change-functions 'litable-update-defs nil t)
+  (run-hooks 'litable-mode-hook))
 
 (defun litable-stop ()
   "Stop litable in the buffer."
@@ -507,9 +531,9 @@ I got tired of having to move outside the string to use it."
 ;;;###autoload
 (define-minor-mode litable-mode
   "Toggle litable-mode"
-  nil                                   ; init value
-  " litable"                            ; lighter
-  nil                                   ; keymap
+  :lighter " litable"
+  :keymap litable-mode-map
+  :group 'litable
   (if litable-mode
       (litable-init)
     (litable-stop)))
