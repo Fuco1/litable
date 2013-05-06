@@ -391,14 +391,16 @@ If depth = 0, also evaluate the current form and print the result."
 (defun litable--print-result (result pos face)
   "Print the RESULT of evaluating form at POS.
 Fontify the result using FACE."
-  (let ((o (make-overlay pos pos)))
+  (let ((o (make-overlay pos pos))
+        (s (format " => %s" result)))
     (push o litable-overlays)
     (litable--set-result-overlay-priority o)
+    (put-text-property 0 1 'cursor t s)
     (overlay-put o
                  'before-string
                  (propertize
                   ;; TODO: extract this format into customize
-                  (format " => %s" result)
+                  s
                   'face face))))
 
 (defun litable--print-input (input pos face)
