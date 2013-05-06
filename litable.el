@@ -478,6 +478,11 @@ I got tired of having to move outside the string to use it."
                     (sexp-at-point))))
         (litable-find-function-subs-arguments form)))))
 
+
+(defun litable-refresh ()
+  (interactive)
+  (litable-update-defs 1))
+
 ;; TODO: if the same function is eval'd twice, also all the overlays
 ;; are created twice. Maybe we should keep an alist (defun . overlays
 ;; in defun) and reuse/update them.  But, until we hit performance
