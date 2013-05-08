@@ -303,6 +303,8 @@ If depth = 0, also evaluate the current form and print the result."
             (goto-char 1)
             (when (re-search-forward (regexp-quote (concat "(defun " name)) nil t)
               (forward-list) (backward-list)
+              ;; TODO: &rest, &key should be handled in some special
+              ;; way when doing the substitution
               (setq args (->> (sexp-at-point)
                            (delete '&optional)
                            (delete '&rest)))
@@ -391,8 +393,9 @@ If depth = 0, also evaluate the current form and print the result."
 (defun litable--print-result (result pos face)
   "Print the RESULT of evaluating form at POS.
 Fontify the result using FACE."
-  (let ((o (make-overlay pos pos))
-        (s (format " => %s" result)))
+  (let* ((o (make-overlay pos pos))
+         (print-quoted t)
+         (s (format " => %s" result)))
     (push o litable-overlays)
     (litable--set-result-overlay-priority o)
     (put-text-property 0 1 'cursor t s)
@@ -406,7 +409,8 @@ Fontify the result using FACE."
 (defun litable--print-input (input pos face)
   "Print the INPUT for the evaluated form at POS.
 Fontify the input using FACE."
-  (let ((o (make-overlay pos pos)))
+  (let ((o (make-overlay pos pos))
+        (print-quoted t))
     (push o litable-overlays)
     (litable--set-result-overlay-priority o)
     (overlay-put o
@@ -428,7 +432,7 @@ Fontify the input using FACE."
   "Create the overlay that shows the substituted value."
   ;; TODO: make the face customizable
   (setq face (or face 'font-lock-type-face))
-  (let (o)
+  (let (o (print-quoted t))
     (setq o (make-overlay start end))
     (push o litable-overlays)
     (litable--set-overlay-priority o)
