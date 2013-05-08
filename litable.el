@@ -377,7 +377,10 @@ If depth = 0, also evaluate the current form and print the result."
                   (litable--print-input (cdr form) (point) 'font-lock-variable-name-face))))))))
     (when (and (= depth 0)
                (nth 1 (syntax-ppss)))
-      (let ((ostart (save-excursion (end-of-line) (point))))
+      (let ((ostart (save-excursion
+                      (litable-goto-toplevel-form)
+                      (forward-list)
+                      (point))))
         ;; TODO: make the face customizable
         (litable--print-result (eval form) ostart 'font-lock-warning-face)))))
 
@@ -473,12 +476,15 @@ I got tired of having to move outside the string to use it."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; updating the overlays
 
+(defun litable-goto-toplevel-form ()
+  (while (/= (car (syntax-ppss)) 0) (litable-backward-up-list)))
+
 (defun litable-update-defs (&optional a b c)
   (litable-remove-overlays)
   (when a
     (ignore-errors
       (let ((form (save-excursion
-                    (while (/= (car (syntax-ppss)) 0) (litable-backward-up-list))
+                    (litable-goto-toplevel-form)
                     (sexp-at-point))))
         (litable-find-function-subs-arguments form)))))
 
