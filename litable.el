@@ -398,7 +398,7 @@ If depth = 0, also evaluate the current form and print the result."
 Fontify the result using FACE."
   (let* ((o (make-overlay pos pos))
          (print-quoted t)
-         (s (format " => %s" result)))
+         (s (format " => %s" (prin1-to-string result))))
     (push o litable-overlays)
     (litable--set-result-overlay-priority o)
     (put-text-property 0 1 'cursor t s)
