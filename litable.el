@@ -46,6 +46,15 @@
   :group 'completion
   :prefix "litable-")
 
+(defcustom litable-print-function 'pp-to-string
+  "Function used to print results and inputs"
+  :type '(choice
+	  (function-item :tag "pp-to-string" :value  pp-to-string)
+	  (function-item :tag "prin1-to-string"
+			 :value  prin1-to-string)
+	  (function :tag "Your own function"))
+  :group 'litable)
+
 (defvar litable-exceptions '(
                              (setq . 2)
                              )
@@ -398,7 +407,7 @@ If depth = 0, also evaluate the current form and print the result."
 Fontify the result using FACE."
   (let* ((o (make-overlay pos pos))
          (print-quoted t)
-         (s (format " => %s" (prin1-to-string result))))
+         (s (format " => %s" (funcall litable-print-function result))))
     (push o litable-overlays)
     (litable--set-result-overlay-priority o)
     (put-text-property 0 1 'cursor t s)
@@ -428,7 +437,7 @@ Fontify the input using FACE."
                  'before-string
                  (propertize
                   ;; TODO: extract this format into customize
-                  (format " <= %s" (mapconcat 'prin1-to-string input ", "))
+                  (format " <= %s" (mapconcat litable-print-function input ", "))
                   'face face))))
 
 (defun litable--create-substitution-overlay (start end value &optional face)
@@ -447,7 +456,7 @@ Fontify the input using FACE."
                   ;; cut off and replace with
                   ;; "bla..."
                   (concat ms "{"
-                          (prin1-to-string value) "}")
+                          (funcall litable-print-function value) "}")
                   'face face))))
 
 
