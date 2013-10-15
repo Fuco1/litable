@@ -251,6 +251,9 @@ in the result."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; argument propagation in the defuns
 
+;; TODO: Should this be protected against unpure? I think that's
+;; unecessary as it seems only variable names are being evaluated, but
+;; I'm not familiar enough with the code to know.
 (defun litable--make-subs-list (arg-names values)
   "Return the list of cons pairs with symbol name in car and value in cdr."
   (let (r)
@@ -377,7 +380,7 @@ If depth = 0, also evaluate the current form and print the result."
                     (end-of-defun)
                     (backward-char)
                     ;; TODO: make the face customizable
-                    (litable--print-result (eval form) (point) 'font-lock-constant-face)))
+                    (litable--print-result (litable--safe-eval form) (point) 'font-lock-constant-face)))
                 ;; TODO: make the printing of input customizable
                 (save-excursion
                   (beginning-of-defun)
@@ -392,6 +395,41 @@ If depth = 0, also evaluate the current form and print the result."
                       (point))))
         ;; TODO: make the face customizable
         (litable--print-result (eval form) ostart 'font-lock-warning-face)))))
+
+(defun litable--safe-eval (form)
+  "Check if FORM contains only known pure functions and eval it.
+
+If it doesn't, don't eval and return a warning."
+  ;; We'll keep track of whether an impure function was found.
+  (let ((litable--impure-found nil))
+    (litable--deep-search-for-impures form)
+    ;; If it was, we report
+    (if litable--impure-found
+        (format "Unsafe functions: %S" litable--impure-found)
+      ;; If it wasn't, we evaluate as expected
+      (eval form))))
+
+;;; TODO: Maybe this should be a hash table? It needs to be looked up
+;;; a lot, so might be a good idea.
+(defvar litable-pure-functions-list nil
+  "List of functions considered pure (and thus safe) by litable.
+
+Litable won't evaluate code that contains a function not listed here.")
+
+(defun litable--deep-search-for-impures (form)
+  "Check whether all car's inside FORM are pure.
+
+If any isn't a pure function, reports in the variable `litable--impure-found'."
+  (if (not (listp form))
+      ;; If it's not a list, it is the function name
+      (unless (member form litable-pure-functions-list)
+        (add-to-list 'litable--impure-found form))
+    ;; If it's a list, it is the entire function call. Check the name,
+    ;; and search the arguments for more function calls. Plain
+    ;; arguments don't get checked.
+    (litable--deep-search-for-impures (car form))
+    (dolist (cur (cdr form))
+      (when (listp cur) (litable--deep-search-for-impures cur)))))
 
 ;; TODO: both print-result and print-input should accumulate the
 ;; results in a variable (for each defun? -- alist?) and then only
