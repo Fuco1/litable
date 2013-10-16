@@ -585,18 +585,38 @@ NOT included here probably should never be.")
 ;;; Check for impure functions
 (defvar litable--impure-found nil "Used to keep track of impure functions found.")
 
+(defun litable-accept-as-pure (batch)
+  "Saves as pure the currently found impure functions.
+
+Asking for confirmation, adds each impure function found to
+`litable-pure-functions-list' (and saves the list).
+
+With BATCH prefix argument, asks only once for all."
+  (interactive "P")
+  (if batch
+      (when (y-or-n-p (format "Save ALL these functions as pure? %s" litable--impure-found))      
+        (mapc (lambda (x) (add-to-list 'litable-pure-functions-list x))
+              litable--impure-found))
+   (dolist (cur litable--impure-found)
+     (when (y-or-n-p (format "Save %s as pure?" cur))
+       (add-to-list 'litable-pure-functions-list cur))))
+  (litable--save-lists))
+
 (defun litable--safe-eval (form)
   "Check if FORM contains only known pure functions and eval it.
 
-If it doesn't, don't eval and return a warning."
+If it doesn't, don't eval and return a warning string.
+Functions can be accepted as pure with `litable-accept-as-pure'."
   ;; We'll keep track of whether an impure function was found.
-  (let ((litable--impure-found nil))
-    (litable--deep-search-for-impures form)
-    ;; If it was, we report
-    (if litable--impure-found
-        (format "Unsafe functions: %S" litable--impure-found)
-      ;; If it wasn't, we evaluate as expected
-      (eval form))))
+  ;; This is a setq instead of a let-form, because this way we can use
+  ;; this information interactively in `litable-accept-as-pure'.
+  (setq litable--impure-found nil)
+  (litable--deep-search-for-impures form)
+  ;; If it was, we report
+  (if litable--impure-found
+      (format "Unsafe functions: %S" litable--impure-found)
+    ;; If it wasn't, we evaluate as expected
+    (eval form)))
 
 (defun litable--deep-search-for-impures (form)
   "Check whether all car's inside FORM are pure.
