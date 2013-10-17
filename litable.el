@@ -502,14 +502,16 @@ I got tired of having to move outside the string to use it."
 
 (defun litable-update-defs-if-moved ()
   "Run `litable-update-defs' only if moved to a different toplevel sexp."
-  (let ((beginning (save-excursion (ignore-errors (beginning-of-defun)) (point)))
-        (end (save-excursion (ignore-errors (end-of-defun)) (point))))
-    (unless (and litable--current-end-position litable--current-beginning-position
-                 (or (= litable--current-beginning-position beginning)
-                     (= litable--current-end-position end)))
-      (setq litable--current-end-position end)
-      (setq litable--current-beginning-position beginning)
-      (litable-update-defs 1))))
+  (when litable-update-on-move
+    (let ((beginning (save-excursion (ignore-errors (beginning-of-defun)) (point)))
+          (end (save-excursion (ignore-errors (end-of-defun)) (point))))
+      (unless (and litable--current-end-position
+                   litable--current-beginning-position
+                   (or (= litable--current-beginning-position beginning)
+                       (= litable--current-end-position end)))
+        (setq litable--current-end-position end)
+        (setq litable--current-beginning-position beginning)
+        (litable-update-defs 1)))))
 
 
 (defun litable-refresh ()
@@ -531,6 +533,17 @@ I got tired of having to move outside the string to use it."
   "Restult overlay priority"
   :type 'integer
   :group 'litable)
+
+(defcustom litable-update-on-move t
+  "If non-nil, overlays are updated when point moves.
+
+This allows the overlay to \"follow\" the point.
+
+Independent of this variable, overlays are also updated when the
+buffer is edited."
+  :type 'boolean
+  :group 'litable
+  :package-version '(litable . "0.0.20130408"))
 
 ;; internal variables
 (defvar litable--overlay-priority litable-overlay-priority)
@@ -564,6 +577,7 @@ I got tired of having to move outside the string to use it."
   (add-hook 'post-command-hook 'litable-update-defs-if-moved nil t)
   (make-local-variable 'litable--current-end-position)
   (make-local-variable 'litable--current-beginning-position)
+  (litable-update-defs 1)
   (run-hooks 'litable-mode-hook))
 
 (defun litable-stop ()
