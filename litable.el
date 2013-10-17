@@ -694,6 +694,22 @@ I got tired of having to move outside the string to use it."
                     (sexp-at-point))))
         (litable-find-function-subs-arguments form)))))
 
+(defvar litable--current-end-position nil "End position of current top level sexp.")
+(defvar litable--current-beginning-position nil "Beginning position of current top level sexp.")
+
+(defun litable-update-defs-if-moved ()
+  "Run `litable-update-defs' only if moved to a different toplevel sexp."
+  (when litable-update-on-move
+    (let ((beginning (save-excursion (ignore-errors (beginning-of-defun)) (point)))
+          (end (save-excursion (ignore-errors (end-of-defun)) (point))))
+      (unless (and litable--current-end-position
+                   litable--current-beginning-position
+                   (or (= litable--current-beginning-position beginning)
+                       (= litable--current-end-position end)))
+        (setq litable--current-end-position end)
+        (setq litable--current-beginning-position beginning)
+        (litable-update-defs 1)))))
+
 
 (defun litable-refresh ()
   (interactive)
@@ -714,6 +730,17 @@ I got tired of having to move outside the string to use it."
   "Restult overlay priority"
   :type 'integer
   :group 'litable)
+
+(defcustom litable-update-on-move t
+  "If non-nil, overlays are updated when point moves.
+
+This allows the overlay to \"follow\" the point.
+
+Independent of this variable, overlays are also updated when the
+buffer is edited."
+  :type 'boolean
+  :group 'litable
+  :package-version '(litable . "0.0.20130408"))
 
 ;; internal variables
 (defvar litable--overlay-priority litable-overlay-priority)
@@ -744,11 +771,16 @@ I got tired of having to move outside the string to use it."
 (defun litable-init ()
   "Initialize litable in the buffer."
   (add-hook 'after-change-functions 'litable-update-defs nil t)
+  (add-hook 'post-command-hook 'litable-update-defs-if-moved nil t)
+  (make-local-variable 'litable--current-end-position)
+  (make-local-variable 'litable--current-beginning-position)
+  (litable-update-defs 1)
   (run-hooks 'litable-mode-hook))
 
 (defun litable-stop ()
   "Stop litable in the buffer."
   (remove-hook 'after-change-functions 'litable-update-defs t)
+  (remove-hook 'post-command-hook 'litable-update-defs-if-moved t)
   (litable-remove-overlays))
 
 ;;;###autoload
