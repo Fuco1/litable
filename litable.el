@@ -497,6 +497,20 @@ I got tired of having to move outside the string to use it."
                     (sexp-at-point))))
         (litable-find-function-subs-arguments form)))))
 
+(defvar litable--current-end-position nil "End position of current top level sexp.")
+(defvar litable--current-beginning-position nil "Beginning position of current top level sexp.")
+
+(defun litable-update-defs-if-moved ()
+  "Run `litable-update-defs' only if moved to a different toplevel sexp."
+  (let ((beginning (save-excursion (ignore-errors (beginning-of-defun)) (point)))
+        (end (save-excursion (ignore-errors (end-of-defun)) (point))))
+    (unless (and litable--current-end-position litable--current-beginning-position
+                 (or (= litable--current-beginning-position beginning)
+                     (= litable--current-end-position end)))
+      (setq litable--current-end-position end)
+      (setq litable--current-beginning-position beginning)
+      (litable-update-defs 1))))
+
 
 (defun litable-refresh ()
   (interactive)
@@ -547,11 +561,15 @@ I got tired of having to move outside the string to use it."
 (defun litable-init ()
   "Initialize litable in the buffer."
   (add-hook 'after-change-functions 'litable-update-defs nil t)
+  (add-hook 'post-command-hook 'litable-update-defs-if-moved nil t)
+  (make-local-variable 'litable--current-end-position)
+  (make-local-variable 'litable--current-beginning-position)
   (run-hooks 'litable-mode-hook))
 
 (defun litable-stop ()
   "Stop litable in the buffer."
   (remove-hook 'after-change-functions 'litable-update-defs t)
+  (remove-hook 'post-command-hook 'litable-update-defs-if-moved t)
   (litable-remove-overlays))
 
 ;;;###autoload
