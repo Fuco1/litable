@@ -1,4 +1,4 @@
-litable
+litable [![Paypal logo](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TAWNECQR3TTUY)
 =======
 
 On-the-fly evaluation/substitution of emacs lisp code
@@ -22,6 +22,4 @@ Contribute
 
 * If you feel like contributing, there are **TODO** annotations in the code. Mostly basic/trivial stuff, good exercise for people starting with elisp.
 * If you have more substantial ideas, start an issue so we can discuss it. I'm open to all ideas, this is simply a precaution for people to not work on the same feature.
-* If you want, you can [throw a couple bucks my way](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CEYP5YVHDRX8C) \(we have a long way to beat that $300k goal people!\).
-
-*note: the link is for [smartparens](https://github.com/Fuco1/smartparens) donations, but don't worry, I'm the same guy ;)*
+* If you want, you can [throw a couple bucks my way](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TAWNECQR3TTUY) \(we have a long way to beat that $300k goal people!\).
