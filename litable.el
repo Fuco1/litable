@@ -49,10 +49,10 @@
 (defcustom litable-print-function 'pp-to-string
   "Function used to print results and inputs"
   :type '(choice
-	  (function-item :tag "pp-to-string" :value  pp-to-string)
-	  (function-item :tag "prin1-to-string"
-			 :value  prin1-to-string)
-	  (function :tag "Your own function"))
+      (function-item :tag "pp-to-string" :value  pp-to-string)
+      (function-item :tag "prin1-to-string"
+             :value  prin1-to-string)
+      (function :tag "Your own function"))
   :group 'litable)
 
 (defvar litable-exceptions '(
@@ -427,7 +427,7 @@ If depth = 0, also evaluate the current form and print the result."
     (newline)))
 
 (defvar litable-pure-functions-list
-  '(* / % + - -zip LaTeX-back-to-indentation
+  '(* / % + - -zip 1+ 1- LaTeX-back-to-indentation
       LaTeX-current-environment LaTeX-default-environment LaTeX-default-style remove-duplicates LaTeX-find-matching-begin LaTeX-mark-environment TeX-active-master
       TeX-check-files TeX-fold-mode TeX-normal-mode TeX-output-extension abbreviate-file-name abs activate-mark
       add-text-properties alist and append aref assoc assq
@@ -503,7 +503,7 @@ Asking for confirmation, adds each impure function found to
 With BATCH prefix argument, asks only once for all."
   (interactive "P")
   (if batch
-      (when (y-or-n-p (format "Save ALL these functions as pure? %s" litable--impure-found))      
+      (when (y-or-n-p (format "Save ALL these functions as pure? %s" litable--impure-found))
         (mapc (lambda (x) (add-to-list 'litable-pure-functions-list x))
               litable--impure-found))
    (dolist (cur litable--impure-found)
@@ -532,7 +532,7 @@ Functions can be accepted as pure with `litable-accept-as-pure'."
 
 If any isn't a pure function, reports in the variable `litable--impure-found'."
   ;; It's possible we got passed a nil form, if so just ignore it.
-  (when form  
+  (when form
     (if (not (listp form))
         ;; If it's not a list, it is the function name
         (unless (member form litable-pure-functions-list)
@@ -553,7 +553,7 @@ If any isn't a pure function, reports in the variable `litable--impure-found'."
             (when (listp cur) (litable--deep-search-for-impures cur))))
          ;; If it's a lambda, we can skip the first argument (it's the
          ;; argument list) but we need to check the rest.
-         ((eq function 'lambda) 
+         ((eq function 'lambda)
           (dolist (cur (cdr rest))
             (when (listp cur) (litable--deep-search-for-impures cur))))
          ;; Anything inside a quote is considered safe, because
@@ -582,7 +582,7 @@ If any isn't a pure function, reports in the variable `litable--impure-found'."
   (when (listp form)
     (let ((function (car form))
           (rest (cdr form)))
-      (if (eq function '\,)      
+      (if (eq function '\,)
           (litable--deep-search-for-impures rest)
         (dolist (cur rest)
           (when (listp cur) (litable--deep-search-for-commas cur)))))))
