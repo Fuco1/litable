@@ -745,7 +745,7 @@ I got tired of having to move outside the string to use it."
   :group 'litable)
 
 (defcustom litable-result-overlay-priority 0
-  "Restult overlay priority"
+  "Result overlay priority"
   :type 'integer
   :group 'litable)
 
