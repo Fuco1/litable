@@ -46,8 +46,8 @@
   :group 'completion
   :prefix "litable-")
 
-(defcustom litable-create-result-overlay-function 'litable--create-result-overlay
-  "Function used to create the result overlay.
+(defcustom litable-result-overlay-text-function 'litable--create-result-overlay-text
+  "Function used to create the result overlay text.
 A function that is called with a string argument and an optional face
 argument, and should evaluate to text with attendant properties."
   :group 'litable
@@ -627,10 +627,10 @@ Fontify the result using FACE."
     (put-text-property 0 1 'cursor t s)
     (overlay-put o
                  'before-string
-                 (funcall litable-create-result-overlay-function s face))))
+                 (funcall litable-result-overlay-text-function s face))))
 
-(defun litable--create-result-overlay (s &optional face)
-  "Create the overlay that shows the result."
+(defun litable--create-result-overlay-text (s &optional face)
+  "Create the text for the overlay that shows the result."
   (format "%s%s" " " (propertize s 'face (or face 'litable-result-face))))
 
 (defun litable--print-input (input pos face)
