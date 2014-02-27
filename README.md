@@ -5,11 +5,11 @@ On-the-fly evaluation/substitution of emacs lisp code
 
 Inspired by Light Table similar feature.
 
-You should only use this with "pure functions", that is functions that do not touch the buffers, file systems, open network connections or any such thing. This is becuase litable will evaluate the form under the point repeatedly and this can lead to very unfortunate accidents (especially if you try eval `shell command "rm -rf"` ;). We'll try to implement some sort of safeguard system in the future.
-
 To start this up, simply enable the litable minor mode in the buffer by calling `M-x litable-mode`.
 
-Not ment to be used in production yet, be warned!
+Litable keeps a list of pure functions as a safeguard for unwanted evaluations. A function must first be accepted into this list using `M-x litable-accept-as-pure` before it can be evaluated on-the-fly. You should take care of what function you accept as pure to avoid any unfortunate accidents.
+
+Not meant to be used in production yet, be warned!
 
 In action
 =======
