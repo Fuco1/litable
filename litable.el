@@ -53,6 +53,15 @@ argument, and should evaluate to text with attendant properties."
   :group 'litable
   :type 'function)
 
+(defcustom litable-substitution-overlay-text-function 'litable--create-substitution-overlay-text
+  "Function used to create the substitution overlay text.
+A function that is called with a string argument containing the
+expression to be replaced, another string argument containing the
+value to be used in the substitution, and an optional face argument.
+The function should evaluate to text with the desired properties."
+  :group 'litable
+  :type 'function)
+
 (defcustom litable-result-format " %s "
   "Format used to display a litable result.
 A format string like \"=> %s\"."
@@ -670,15 +679,18 @@ Fontify the input using FACE."
     (push o litable-overlays)
     (litable--set-overlay-priority o)
     (overlay-put o 'display
-                 (propertize
-                  ;; TODO: extract this format into customize
-                  ;; TODO: customize max-length
-                  ;; for the subexpression, then
-                  ;; cut off and replace with
-                  ;; "bla..."
-                  (concat ms "{"
-                          (funcall litable-print-function value) "}")
-                  'face face))))
+                 ;; TODO: customize max-length
+                 ;; for the subexpression, then
+                 ;; cut off and replace with
+                 ;; "bla..."
+                 (funcall 
+                  litable-substitution-overlay-text-function
+                  ms
+                  (funcall litable-print-function value)))))
+
+(defun litable--create-substitution-overlay-text (exp value &optional face)
+  "Create the text for the overlay that shows the substitution."
+  (format "%s %s" exp (propertize value 'face (or face 'litable-substitution-face))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
