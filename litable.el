@@ -46,6 +46,13 @@
   :group 'completion
   :prefix "litable-")
 
+(defcustom litable-create-result-overlay-function 'litable--create-result-overlay
+  "Function used to create the result overlay.
+A function that is called with a string argument and an optional face
+argument, and should evaluate to text with attendant properties."
+  :group 'litable
+  :type 'function)
+
 (defcustom litable-result-format " %s "
   "Format used to display a litable result.
 A format string like \"=> %s\"."
@@ -391,7 +398,6 @@ If depth = 0, also evaluate the current form and print the result."
                   (save-excursion
                     (end-of-defun)
                     (backward-char)
-                    ;; TODO: make the face customizable
                     (litable--print-result (litable--safe-eval form) (point) 'font-lock-constant-face)))
                 ;; TODO: make the printing of input customizable
                 (save-excursion
@@ -405,7 +411,6 @@ If depth = 0, also evaluate the current form and print the result."
                       (litable-goto-toplevel-form)
                       (forward-list)
                       (point))))
-        ;; TODO: make the face customizable
         (litable--print-result (litable--safe-eval form) ostart 'litable-result-face)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -622,10 +627,11 @@ Fontify the result using FACE."
     (put-text-property 0 1 'cursor t s)
     (overlay-put o
                  'before-string
-                 (propertize
-                  ;; TODO: extract this format into customize
-                  s
-                  'face face))))
+                 (funcall litable-create-result-overlay-function s face))))
+
+(defun litable--create-result-overlay (s &optional face)
+  "Create the overlay that shows the result."
+  (format "%s%s" " " (propertize s 'face (or face 'litable-result-face))))
 
 (defun litable--print-input (input pos face)
   "Print the INPUT for the evaluated form at POS.
