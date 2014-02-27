@@ -46,6 +46,12 @@
   :group 'completion
   :prefix "litable-")
 
+(defcustom litable-result-format " %s "
+  "Format used to display a litable result.
+A format string like \"=> %s\"."
+  :group 'litable
+  :type '(choice (string :tag "Format string")))
+
 (defcustom litable-print-function 'pp-to-string
   "Function used to print results and inputs"
   :type '(choice
@@ -604,7 +610,7 @@ If any isn't a pure function, reports in the variable `litable--impure-found'."
 Fontify the result using FACE."
   (let* ((o (make-overlay pos pos))
          (print-quoted t)
-         (s (format " => %s" (funcall litable-print-function result))))
+         (s (format litable-result-format (funcall litable-print-function result))))
     (push o litable-overlays)
     (litable--set-result-overlay-priority o)
     (put-text-property 0 1 'cursor t s)
