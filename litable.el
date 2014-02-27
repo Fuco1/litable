@@ -74,6 +74,12 @@ A format string like \"=> %s\"."
 Defaults to inheriting font-lock-warning-face."
   :group 'litable)
 
+(defface litable-substitution-face
+  '((default :inherit (font-lock-type-face)))
+  "Face for displaying the litable substitution.
+Defaults to inheriting font-lock-type-face."
+  :group 'litable)
+
 (defvar litable-exceptions '(
                              (setq . 2)
                              )
@@ -658,7 +664,7 @@ Fontify the input using FACE."
 (defun litable--create-substitution-overlay (start end value &optional face)
   "Create the overlay that shows the substituted value."
   ;; TODO: make the face customizable
-  (setq face (or face 'font-lock-type-face))
+  (setq face (or face 'litable-substitution-face))
   (let (o (print-quoted t))
     (setq o (make-overlay start end))
     (push o litable-overlays)
