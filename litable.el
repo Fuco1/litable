@@ -61,6 +61,12 @@ A format string like \"=> %s\"."
       (function :tag "Your own function"))
   :group 'litable)
 
+(defface litable-result-face
+  '((default :inherit (font-lock-warning-face)))
+  "Face for displaying the litable result.
+Defaults to inheriting font-lock-warning-face."
+  :group 'litable)
+
 (defvar litable-exceptions '(
                              (setq . 2)
                              )
@@ -365,7 +371,7 @@ If depth = 0, also evaluate the current form and print the result."
                         (when vars
                           ;; TODO: make the face customizable
                           (litable--create-substitution-overlay
-                           mb me (cdr (assoc (intern ms) vars)) 'font-lock-warning-face))))
+                           mb me (cdr (assoc (intern ms) vars)) 'litable-result-face))))
                      ((not ignore)
                       (let ((vars (or (litable-get-let-bound-variable-values) subs)))
                         (litable--create-substitution-overlay mb me (cdr (assoc (intern ms) vars))))))
@@ -400,7 +406,7 @@ If depth = 0, also evaluate the current form and print the result."
                       (forward-list)
                       (point))))
         ;; TODO: make the face customizable
-        (litable--print-result (litable--safe-eval form) ostart 'font-lock-warning-face)))))
+        (litable--print-result (litable--safe-eval form) ostart 'litable-result-face)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Creating and saving the pure-functions list
