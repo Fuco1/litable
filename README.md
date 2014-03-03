@@ -3,11 +3,11 @@ litable [![Paypal logo](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.
 
 On-the-fly evaluation/substitution of emacs lisp code
 
-Inspired by Light Table similar feature.
+Inspired by Light Table's similar feature.
 
 To start this up, simply enable the litable minor mode in the buffer by calling `M-x litable-mode`.
 
-Litable keeps a list of pure functions as a safeguard for unwanted evaluations. A function must first be accepted into this list using `M-x litable-accept-as-pure` before it can be evaluated on-the-fly. You should take care of what function you accept as pure to avoid any unfortunate accidents.
+Litable keeps a list of pure functions as a safeguard for unwanted evaluations. A function must first be accepted into this list (using `M-x litable-accept-as-pure`) before it can be evaluated on-the-fly. You should take care of what function you accept as pure to avoid any unfortunate accidents. Also, note that the pure functions list persists across sessions.
 
 Not meant to be used in production yet, be warned!
 
