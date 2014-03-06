@@ -46,6 +46,28 @@
   :group 'completion
   :prefix "litable-")
 
+(defcustom litable-result-overlay-text-function 'litable--create-result-overlay-text
+  "Function used to create the result overlay text.
+A function that is called with a string argument and an optional face
+argument, and should evaluate to text with attendant properties."
+  :group 'litable
+  :type 'function)
+
+(defcustom litable-substitution-overlay-text-function 'litable--create-substitution-overlay-text
+  "Function used to create the substitution overlay text.
+A function that is called with a string argument containing the
+expression to be replaced, another string argument containing the
+value to be used in the substitution, and an optional face argument.
+The function should evaluate to text with the desired properties."
+  :group 'litable
+  :type 'function)
+
+(defcustom litable-result-format " %s "
+  "Format used to display a litable result.
+A format string like \"=> %s\"."
+  :group 'litable
+  :type '(choice (string :tag "Format string")))
+
 (defcustom litable-print-function 'pp-to-string
   "Function used to print results and inputs"
   :type '(choice
@@ -53,6 +75,18 @@
       (function-item :tag "prin1-to-string"
              :value  prin1-to-string)
       (function :tag "Your own function"))
+  :group 'litable)
+
+(defface litable-result-face
+  '((default :inherit (font-lock-warning-face)))
+  "Face for displaying the litable result.
+Defaults to inheriting font-lock-warning-face."
+  :group 'litable)
+
+(defface litable-substitution-face
+  '((default :inherit (font-lock-type-face)))
+  "Face for displaying the litable substitution.
+Defaults to inheriting font-lock-type-face."
   :group 'litable)
 
 (defvar litable-exceptions '(
@@ -359,7 +393,7 @@ If depth = 0, also evaluate the current form and print the result."
                         (when vars
                           ;; TODO: make the face customizable
                           (litable--create-substitution-overlay
-                           mb me (cdr (assoc (intern ms) vars)) 'font-lock-warning-face))))
+                           mb me (cdr (assoc (intern ms) vars)) 'litable-result-face))))
                      ((not ignore)
                       (let ((vars (or (litable-get-let-bound-variable-values) subs)))
                         (litable--create-substitution-overlay mb me (cdr (assoc (intern ms) vars))))))
@@ -379,7 +413,6 @@ If depth = 0, also evaluate the current form and print the result."
                   (save-excursion
                     (end-of-defun)
                     (backward-char)
-                    ;; TODO: make the face customizable
                     (litable--print-result (litable--safe-eval form) (point) 'font-lock-constant-face)))
                 ;; TODO: make the printing of input customizable
                 (save-excursion
@@ -393,8 +426,7 @@ If depth = 0, also evaluate the current form and print the result."
                       (litable-goto-toplevel-form)
                       (forward-list)
                       (point))))
-        ;; TODO: make the face customizable
-        (litable--print-result (litable--safe-eval form) ostart 'font-lock-warning-face)))))
+        (litable--print-result (litable--safe-eval form) ostart 'litable-result-face)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Creating and saving the pure-functions list
@@ -604,16 +636,17 @@ If any isn't a pure function, reports in the variable `litable--impure-found'."
 Fontify the result using FACE."
   (let* ((o (make-overlay pos pos))
          (print-quoted t)
-         (s (format " => %s" (funcall litable-print-function result))))
+         (s (format litable-result-format (funcall litable-print-function result))))
     (push o litable-overlays)
     (litable--set-result-overlay-priority o)
     (put-text-property 0 1 'cursor t s)
     (overlay-put o
                  'before-string
-                 (propertize
-                  ;; TODO: extract this format into customize
-                  s
-                  'face face))))
+                 (funcall litable-result-overlay-text-function s face))))
+
+(defun litable--create-result-overlay-text (s &optional face)
+  "Create the text for the overlay that shows the result."
+  (format "%s%s" " " (propertize s 'face (or face 'litable-result-face))))
 
 (defun litable--print-input (input pos face)
   "Print the INPUT for the evaluated form at POS.
@@ -640,21 +673,24 @@ Fontify the input using FACE."
 (defun litable--create-substitution-overlay (start end value &optional face)
   "Create the overlay that shows the substituted value."
   ;; TODO: make the face customizable
-  (setq face (or face 'font-lock-type-face))
+  (setq face (or face 'litable-substitution-face))
   (let (o (print-quoted t))
     (setq o (make-overlay start end))
     (push o litable-overlays)
     (litable--set-overlay-priority o)
     (overlay-put o 'display
-                 (propertize
-                  ;; TODO: extract this format into customize
-                  ;; TODO: customize max-length
-                  ;; for the subexpression, then
-                  ;; cut off and replace with
-                  ;; "bla..."
-                  (concat ms "{"
-                          (funcall litable-print-function value) "}")
-                  'face face))))
+                 ;; TODO: customize max-length
+                 ;; for the subexpression, then
+                 ;; cut off and replace with
+                 ;; "bla..."
+                 (funcall 
+                  litable-substitution-overlay-text-function
+                  ms
+                  (funcall litable-print-function value)))))
+
+(defun litable--create-substitution-overlay-text (exp value &optional face)
+  "Create the text for the overlay that shows the substitution."
+  (format "%s %s" exp (propertize value 'face (or face 'litable-substitution-face))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -727,7 +763,7 @@ I got tired of having to move outside the string to use it."
   :group 'litable)
 
 (defcustom litable-result-overlay-priority 0
-  "Restult overlay priority"
+  "Result overlay priority"
   :type 'integer
   :group 'litable)
 
