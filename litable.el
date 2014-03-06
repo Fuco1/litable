@@ -1,13 +1,13 @@
 ;;; litable.el --- dynamic evaluation replacement with emacs
 
-;; Copyright (C) 2013 Matus Goljer
+;; Copyright (C) 2013-2014 Matus Goljer
 
 ;; Author: Matus Goljer <matus.goljer@gmail.com>
 ;; Maintainer: Matus Goljer <matus.goljer@gmail.com>
 ;; Keywords: lisp
-;; Version: 0.0.20130408
+;; Version: 0.0.20140306
 ;; Created: 8th April 2013
-;; Package-requires: ((dash "1.1.0"))
+;; Package-requires: ((dash "2.6.0"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -683,7 +683,7 @@ Fontify the input using FACE."
                  ;; for the subexpression, then
                  ;; cut off and replace with
                  ;; "bla..."
-                 (funcall 
+                 (funcall
                   litable-substitution-overlay-text-function
                   ms
                   (funcall litable-print-function value)))))
