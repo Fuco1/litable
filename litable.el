@@ -446,7 +446,7 @@ If depth = 0, also evaluate the current form and print the result."
 
 (defun litable--dump-list (list-symbol)
   "Insert (setq 'LIST-SYMBOL (append LIST-VALUE LIST-SYMBOL-default) to current buffer."
-  (symbol-macrolet ((value (symbol-value list-symbol)))
+  (cl-symbol-macrolet ((value (symbol-value list-symbol)))
     (insert "(setq " (symbol-name list-symbol) "\n"
             "      '(")
     (newline-and-indent)
