@@ -431,8 +431,10 @@ If depth = 0, also evaluate the current form and print the result."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Creating and saving the pure-functions list
 
-(defvar litable-list-file "~/.emacs.d/.litable-lists.el"
-  "The position of the file that keeps track of known pure functions.")
+(defcustom litable-list-file "~/.emacs.d/.litable-lists.el"
+  "The position of the file that keeps track of known pure functions."
+  :group 'litable
+  :type 'file)
 
 (defun litable--save-lists ()
   "Saves pure functions list to `litable-list-file'"
