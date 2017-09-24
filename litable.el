@@ -320,9 +320,7 @@ in the result."
 
 (defun litable--construct-needle (variables)
   "Return a regexp that will search for the variable symbols."
-  (concat "\\_<"
-          (regexp-opt (--map (regexp-quote (symbol-name it)) variables))
-          "\\_>"))
+  (regexp-opt (-map #'symbol-name variables) 'symbols))
 
 ;; - maybe add different colors for different arguments that get
 ;;   substituted. This might result in rainbows sometimes, maybe
