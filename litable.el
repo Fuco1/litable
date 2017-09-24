@@ -458,64 +458,72 @@ If depth = 0, also evaluate the current form and print the result."
     (newline)))
 
 (defvar litable-pure-functions-list
-  '(* / % + - -zip 1+ 1- LaTeX-back-to-indentation
-      LaTeX-current-environment remove-duplicates LaTeX-find-matching-begin LaTeX-mark-environment TeX-active-master
-      TeX-check-files TeX-fold-mode TeX-normal-mode TeX-output-extension abbreviate-file-name abs activate-mark
-      add-text-properties alist and append aref assoc assq
-      back-to-indentation backward-char backward-list backward-sexp backward-up-list backward-word beginning-of-buffer
-      beginning-of-defun beginning-of-line beginning-of-thing boundp bounds-of-thing-at-point browse-url-encode-url buffer-end
-      buffer-file-name buffer-list buffer-live-p buffer-modified-p buffer-name buffer-string
-      buffer-substring buffer-substring-no-properties c-end-of-defun caar cadr called-interactively-p capitalize
-      car car-safe case catch cdar cddr cdr
-      cdr-safe ceiling char-displayable-p char-to-string check-parens cl-copy-list cl-find
-      cl-loop cl-member cl-remove-if cl-signum comment-region compare-strings compilation-buffer-internal-p
-      completing-read concat concatenate cond condition-case cons consp
-      copy-sequence count count-if current-buffer current-column current-time
-      current-time-string date-to-time decf directory-file-name directory-files dired-get-filename
-      dired-next-line display-graphic-p dolist dotimes down-list downcase elt
-      emacs-uptime end-of-defun end-of-line end-of-thing eobp eolp eq
-      equal error error-message-string executable-find expand-file-name fboundp file-attributes
-      file-directory-p file-exists-p file-expand-wildcards file-name-as-directory file-name-base file-name-directory
-      file-name-extension file-name-nondirectory file-name-sans-extension file-relative-name find-if first float-time
-      floor format format-mode-line format-time-string forward-char forward-line
-      forward-list forward-sexp frame-first-window frame-parameter frame-width functionp
-      get get-buffer-process get-buffer-window get-buffer-window-list get-char-property getenv gethash
-      goto-char goto-line if ignore-errors int-to-string integerp interactive
-      json-encode json-encode-alist json-encode-string json-join kbd key-binding keywordp
-      lambda length let let* line-beginning-position line-end-position line-number-at-pos
-      list list-system-processes listify-key-sequence listp local-key-binding log looking-at
-      looking-back loop make-hash-table make-marker make-overlay make-sparse-keymap make-string
-      make-symbol mark mark-marker mark-sexp match-beginning match-data
-      match-end match-string match-string-no-properties max member memq
-      message mew-summary-display min minibufferp minor-mode-key-binding mode-line-eol-desc move-beginning-of-line
-      move-end-of-line move-overlay not nth null number-to-string numberp
-      or overlay-end overlay-get overlay-put overlay-start overlays-at
-      overlays-in paredit-backward-up plist-get point point-max point-min pp-to-string
-      princ print process-attributes process-get process-status progn propertize
-      quote random rassoc re-search-backward re-search-forward regexp-opt regexp-quote
-      region-beginning region-end remove-if remove-if-not remove-overlays replace-regexp-in-string replace-string
-      reverse save-current-buffer save-excursion save-match-data save-restriction secure-hash set
-      set-buffer setf setq sexp-at-point signal skip-chars-backward skip-chars-forward
-      split-string string string-equal string-lessp string-match string-to-char string-to-list
-      string-to-number string< string= stringp subrp substring
-      substring-no-properties symbol-function symbol-macrolet symbol-name symbol-value symbolp
-      text-properties-at thing-at-point thing-at-point-looking-at this-command-keys throw time-since time-to-seconds
-      type-of unless unwind-protect upcase url-hexify-string user-full-name variable-at-point
-      vector verify-visited-file-modtime version-to-list warn when while
-      window-list window-start window-width with-current-buffer with-output-to-string with-temp-buffer zerop
-      yes-or-no-p y-or-n-p window-live-p use-region-p string-prefix-p string-match-p set-buffer-modified-p
-      region-active-p one-window-p number-or-marker-p jabber-muc-sender-p integer-or-marker-p file-writable-p file-remote-p
-      file-regular-p file-readable-p file-name-absolute-p sin tan)
-  "List of symbols of function considered pure (and thus safe) by litable.
+  '(
+    LaTeX-back-to-indentation LaTeX-current-environment
+                              remove-duplicates LaTeX-find-matching-begin
+                              LaTeX-mark-environment TeX-active-master TeX-check-files
+                              TeX-fold-mode TeX-normal-mode TeX-output-extension
+                              abbreviate-file-name activate-mark add-text-properties alist
+                              and back-to-indentation backward-char backward-list
+                              backward-sexp backward-up-list backward-word
+                              beginning-of-buffer beginning-of-defun beginning-of-line
+                              beginning-of-thing bounds-of-thing-at-point
+                              browse-url-encode-url buffer-live-p buffer-name
+                              buffer-substring-no-properties c-end-of-defun caar cadr
+                              called-interactively-p case catch cdar cddr char-displayable-p
+                              check-parens cl-copy-list cl-find cl-loop cl-member
+                              cl-remove-if comment-region compilation-buffer-internal-p
+                              completing-read concatenate cond condition-case count count-if
+                              current-column date-to-time decf directory-file-name
+                              directory-files dired-get-filename dired-next-line
+                              display-graphic-p dolist dotimes down-list emacs-uptime
+                              end-of-defun end-of-line end-of-thing error executable-find
+                              expand-file-name file-attributes file-expand-wildcards
+                              file-name-as-directory file-name-base file-name-directory
+                              file-name-extension file-name-nondirectory
+                              file-name-sans-extension file-relative-name find-if first
+                              format-mode-line forward-char forward-line forward-list
+                              forward-sexp frame-parameter frame-width functionp
+                              get-buffer-process get-buffer-window-list get-char-property
+                              goto-char goto-line if ignore-errors interactive json-encode
+                              json-encode-alist json-encode-string json-join kbd key-binding
+                              keywordp lambda let let* line-number-at-pos
+                              list-system-processes listify-key-sequence local-key-binding
+                              looking-at looking-back loop make-hash-table make-overlay
+                              make-sparse-keymap mark-sexp match-beginning match-data
+                              match-end match-string match-string-no-properties message
+                              mew-summary-display minibufferp minor-mode-key-binding
+                              mode-line-eol-desc move-beginning-of-line move-end-of-line
+                              move-overlay or overlay-end overlay-get overlay-put
+                              overlay-start overlays-at overlays-in paredit-backward-up
+                              pp-to-string princ print process-attributes process-get
+                              process-status progn quote random re-search-backward
+                              re-search-forward regexp-opt remove-if remove-if-not
+                              remove-overlays replace-regexp-in-string replace-string
+                              save-current-buffer save-excursion save-match-data
+                              save-restriction secure-hash set set-buffer setf setq
+                              sexp-at-point signal skip-chars-backward skip-chars-forward
+                              split-string string-match string-to-list
+                              substring-no-properties symbol-macrolet text-properties-at
+                              thing-at-point thing-at-point-looking-at throw time-since
+                              time-to-seconds type-of unless unwind-protect url-hexify-string
+                              variable-at-point verify-visited-file-modtime version-to-list
+                              warn when while window-list with-current-buffer
+                              with-output-to-string with-temp-buffer yes-or-no-p y-or-n-p
+                              use-region-p string-prefix-p string-match-p
+                              set-buffer-modified-p region-active-p jabber-muc-sender-p
+                              file-remote-p file-regular-p)
+  "List of additional function considered pure (and thus safe) by litable.
 
-Litable won't evaluate code that contains a function not listed here.
+Litable will only execute functions marked as pure by the
+byte-compiler, or whitelisted here. See `literable--pure-p'.
 
 Functions that take predicates as arguments (such as `remove-if')
 are included here even though they aren't necessarily pure. That
 is because we assume the predicate will be a pure function.
 
 Functions that evaluate arbitrary code (eval, apply, funcall) are
-NOT included here probably should never be.")
+NOT included here and should never be.")
 
 (if (file-exists-p litable-list-file)
     (load litable-list-file t)
@@ -542,6 +550,13 @@ With BATCH prefix argument, asks only once for all."
        (add-to-list 'litable-pure-functions-list cur))))
   (litable--save-lists))
 
+(defun litable--pure-p (fn-symbol)
+  "Return non-nil if fn-symbol is a pure function."
+  (and (fboundp fn-symbol)
+       (or
+        (get fn-symbol 'side-effect-free)
+        (member fn-symbol litable-pure-functions-list))))
+
 (defun litable--safe-eval (form)
   "Check if FORM contains only known pure functions and eval it.
 
@@ -566,7 +581,7 @@ If any isn't a pure function, reports in the variable `litable--impure-found'."
   (when form
     (if (not (listp form))
         ;; If it's not a list, it is the function name
-        (unless (member form litable-pure-functions-list)
+        (unless (litable--pure-p form)
           (add-to-list 'litable--impure-found form))
       ;; If it's a list, it is the entire function call. Check the name,
       ;; and search the arguments for more function calls. Plain
