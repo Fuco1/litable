@@ -459,37 +459,37 @@ If depth = 0, also evaluate the current form and print the result."
 
 (defvar litable-pure-functions-list
   '(* / % + - -zip 1+ 1- LaTeX-back-to-indentation
-      LaTeX-current-environment LaTeX-default-environment LaTeX-default-style remove-duplicates LaTeX-find-matching-begin LaTeX-mark-environment TeX-active-master
+      LaTeX-current-environment remove-duplicates LaTeX-find-matching-begin LaTeX-mark-environment TeX-active-master
       TeX-check-files TeX-fold-mode TeX-normal-mode TeX-output-extension abbreviate-file-name abs activate-mark
       add-text-properties alist and append aref assoc assq
       back-to-indentation backward-char backward-list backward-sexp backward-up-list backward-word beginning-of-buffer
       beginning-of-defun beginning-of-line beginning-of-thing boundp bounds-of-thing-at-point browse-url-encode-url buffer-end
-      buffer-file-name buffer-list buffer-live-p buffer-modified-p buffer-name buffer-read-only buffer-string
+      buffer-file-name buffer-list buffer-live-p buffer-modified-p buffer-name buffer-string
       buffer-substring buffer-substring-no-properties c-end-of-defun caar cadr called-interactively-p capitalize
       car car-safe case catch cdar cddr cdr
       cdr-safe ceiling char-displayable-p char-to-string check-parens cl-copy-list cl-find
       cl-loop cl-member cl-remove-if cl-signum comment-region compare-strings compilation-buffer-internal-p
       completing-read concat concatenate cond condition-case cons consp
-      copy-sequence count count-if current-buffer current-column current-prefix-arg current-time
-      current-time-string date-to-time decf default-directory directory-file-name directory-files dired-get-filename
+      copy-sequence count count-if current-buffer current-column current-time
+      current-time-string date-to-time decf directory-file-name directory-files dired-get-filename
       dired-next-line display-graphic-p dolist dotimes down-list downcase elt
       emacs-uptime end-of-defun end-of-line end-of-thing eobp eolp eq
       equal error error-message-string executable-find expand-file-name fboundp file-attributes
-      file-directory-p file-exists-p file-expand-wildcards file-name file-name-as-directory file-name-base file-name-directory
+      file-directory-p file-exists-p file-expand-wildcards file-name-as-directory file-name-base file-name-directory
       file-name-extension file-name-nondirectory file-name-sans-extension file-relative-name find-if first float-time
-      floor for format format-mode-line format-time-string forward-char forward-line
-      forward-list forward-sexp frame-first-window frame-parameter frame-width fresets functionp
+      floor format format-mode-line format-time-string forward-char forward-line
+      forward-list forward-sexp frame-first-window frame-parameter frame-width functionp
       get get-buffer-process get-buffer-window get-buffer-window-list get-char-property getenv gethash
       goto-char goto-line if ignore-errors int-to-string integerp interactive
       json-encode json-encode-alist json-encode-string json-join kbd key-binding keywordp
       lambda length let let* line-beginning-position line-end-position line-number-at-pos
       list list-system-processes listify-key-sequence listp local-key-binding log looking-at
       looking-back loop make-hash-table make-marker make-overlay make-sparse-keymap make-string
-      make-symbol mark mark-marker mark-sexp match-beginning match-data match-data-list
-      match-end match-string match-string-no-properties max litable-create-fake-cursor-at-point member memq
+      make-symbol mark mark-marker mark-sexp match-beginning match-data
+      match-end match-string match-string-no-properties max member memq
       message mew-summary-display min minibufferp minor-mode-key-binding mode-line-eol-desc move-beginning-of-line
       move-end-of-line move-overlay not nth null number-to-string numberp
-      or overlay-end overlay-get overlay-put overlay-start overlays overlays-at
+      or overlay-end overlay-get overlay-put overlay-start overlays-at
       overlays-in paredit-backward-up plist-get point point-max point-min pp-to-string
       princ print process-attributes process-get process-status progn propertize
       quote random rassoc re-search-backward re-search-forward regexp-opt regexp-quote
@@ -497,15 +497,15 @@ If depth = 0, also evaluate the current form and print the result."
       reverse save-current-buffer save-excursion save-match-data save-restriction secure-hash set
       set-buffer setf setq sexp-at-point signal skip-chars-backward skip-chars-forward
       split-string string string-equal string-lessp string-match string-to-char string-to-list
-      string-to-number string< string= stringp strings subrp substring
-      substring-no-properties symbol-function symbol-macrolet symbol-name symbol-regexp symbol-value symbolp
+      string-to-number string< string= stringp subrp substring
+      substring-no-properties symbol-function symbol-macrolet symbol-name symbol-value symbolp
       text-properties-at thing-at-point thing-at-point-looking-at this-command-keys throw time-since time-to-seconds
       type-of unless unwind-protect upcase url-hexify-string user-full-name variable-at-point
-      variables vector verify-visited-file-modtime version-to-list warn when while
+      vector verify-visited-file-modtime version-to-list warn when while
       window-list window-start window-width with-current-buffer with-output-to-string with-temp-buffer zerop
       yes-or-no-p y-or-n-p window-live-p use-region-p string-prefix-p string-match-p set-buffer-modified-p
       region-active-p one-window-p number-or-marker-p jabber-muc-sender-p integer-or-marker-p file-writable-p file-remote-p
-      file-regular-p file-readable-p file-name-absolute-p sin con tan)
+      file-regular-p file-readable-p file-name-absolute-p sin tan)
   "List of symbols of function considered pure (and thus safe) by litable.
 
 Litable won't evaluate code that contains a function not listed here.
