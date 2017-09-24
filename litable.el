@@ -5,7 +5,6 @@
 ;; Author: Matus Goljer <matus.goljer@gmail.com>
 ;; Maintainer: Matus Goljer <matus.goljer@gmail.com>
 ;; Keywords: lisp
-;; Version: 0.0.20140306
 ;; Created: 8th April 2013
 ;; Package-requires: ((dash "2.6.0"))
 
