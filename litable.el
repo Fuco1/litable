@@ -236,14 +236,14 @@ point."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; fake eval (eval with enviroment)
+;; fake eval (eval with environment)
 
-(defun litable--fake-eval (form enviroment &optional type)
-  "Evaluate the FORM in ENVIROMENT using the enviroment binding of TYPE.
+(defun litable--fake-eval (form environment &optional type)
+  "Evaluate the FORM in ENVIRONMENT using the environment binding of TYPE.
 
 TYPE can be a symbol `let' or `let*'."
   (setq type (or type 'let))
-  (ignore-errors (litable--safe-eval `(,type ,enviroment ,form))))
+  (ignore-errors (litable--safe-eval `(,type ,environment ,form))))
 
 (defun litable--alist-to-list (alist)
   "Change (a . b) into (a b)"
@@ -254,14 +254,14 @@ TYPE can be a symbol `let' or `let*'."
 
 This will also evaluate the newly-bound variables."
   (let* ((pvars (or (and overlay (overlay-get overlay 'litable-let-form-cur)) subs))
-         (enviroment (litable--alist-to-list pvars)))
+         (environment (litable--alist-to-list pvars)))
     ;; TODO: THIS DOESN'T WORK WITH let*!! We need to update the
     ;; bindings one by one in that case, and merge after each update.
     (litable--alist-merge
      pvars
      (mapcar (lambda (it)
                (cons (car it)
-                     (litable--fake-eval (cadr it) enviroment 'let)))
+                     (litable--fake-eval (cadr it) environment 'let)))
              varlist))))
 
 ;; TODO: this just sucks... make it better :P
@@ -324,7 +324,7 @@ in the result."
 
 ;; - maybe add different colors for different arguments that get
 ;;   substituted. This might result in rainbows sometimes, maybe
-;;   undersirable
+;;   undesirable
 ;; TODO: general warning: LONGASS FUNCTION! Refactor this into
 ;; something more managable.
 (defun litable-find-function-subs-arguments (form &optional depth)
@@ -615,7 +615,7 @@ If any isn't a pure function, reports in the variable `litable--impure-found'."
           (dolist (cur (cdr rest))
             (when (listp cur) (litable--deep-search-for-impures cur))))
          ;; Anything inside a quote is considered safe, because
-         ;; anyting that could evaluate it (eval, funcall, etc) is
+         ;; anything that could evaluate it (eval, funcall, etc) is
          ;; considered unsafe. The exception are functions with
          ;; predicates (remove-if), but we assume these functions will
          ;; use plain lambdas instead of quotes.
