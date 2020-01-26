@@ -464,7 +464,7 @@ If depth = 0, also evaluate the current form and print the result."
   '(* / % + - -zip 1+ 1- LaTeX-back-to-indentation
       LaTeX-current-environment LaTeX-default-environment LaTeX-default-style remove-duplicates LaTeX-find-matching-begin LaTeX-mark-environment TeX-active-master
       TeX-check-files TeX-fold-mode TeX-normal-mode TeX-output-extension abbreviate-file-name abs activate-mark
-      add-text-properties alist and append aref assoc assq
+      alist and append aref assoc assq
       back-to-indentation backward-char backward-list backward-sexp backward-up-list backward-word beginning-of-buffer
       beginning-of-defun beginning-of-line beginning-of-thing boundp bounds-of-thing-at-point browse-url-encode-url buffer-end
       buffer-file-name buffer-list buffer-live-p buffer-modified-p buffer-name buffer-read-only buffer-string
