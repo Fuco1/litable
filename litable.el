@@ -564,7 +564,9 @@ using `completing-read', remove the selected candidate and save the list."
     (let ((symbol
            (completing-read "Pure function: "
                             litable-pure-functions-list
-                            nil t (symbol-name (litable--pure-at-point)))))
+                            nil t
+                            (if-let (sym-at-pt (litable--pure-at-point))
+                                (symbol-name sym-at-pt) nil))))
       (setq litable-pure-functions-list
             (delq (intern symbol) litable-pure-functions-list))
       (litable--save-lists))))
