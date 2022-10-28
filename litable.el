@@ -545,6 +545,32 @@ With BATCH prefix argument, asks only once for all."
        (add-to-list 'litable-pure-functions-list cur))))
   (litable--save-lists))
 
+(defun litable--pure-at-point ()
+  "Return symbol at point if it's a pure function."
+  (let ((sym (symbol-at-point)))
+    (when (and
+           (functionp sym)
+           (-contains-p litable-pure-functions-list sym))
+      sym)))
+
+(defun litable-remove-from-pure-list ()
+  "Remove a function from the pure functions list.
+
+Provide completion for the content of `litable-pure-functions-list'
+using `completing-read', remove the selected candidate and save the list."
+  (interactive)
+  (if (null litable-pure-functions-list)
+      (message "No function trusted to be pure.")
+    (let ((symbol
+           (completing-read "Pure function: "
+                            litable-pure-functions-list
+                            nil t
+                            (if-let (sym-at-pt (litable--pure-at-point))
+                                (symbol-name sym-at-pt) nil))))
+      (setq litable-pure-functions-list
+            (delq (intern symbol) litable-pure-functions-list))
+      (litable--save-lists))))
+
 (defun litable--safe-eval (form)
   "Check if FORM contains only known pure functions and eval it.
 
