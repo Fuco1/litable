@@ -834,7 +834,6 @@ With BATCH prefix argument, asks only once for all."
        (add-to-list 'litable-pure-functions-list cur))))
   (litable--save-lists))
 
-<<<<<<< variant A
 (defun litable--pure-at-point ()
   "Return symbol at point if it's a pure function."
   (let ((sym (symbol-at-point)))
@@ -860,14 +859,13 @@ using `completing-read', remove the selected candidate and save the list."
       (setq litable-pure-functions-list
             (delq (intern symbol) litable-pure-functions-list))
       (litable--save-lists))))
->>>>>>> variant B
+
 (defun litable--pure-p (fn-symbol)
   "Return non-nil if fn-symbol is a pure function."
   (and (fboundp fn-symbol)
        (or
         (get fn-symbol 'side-effect-free)
         (member fn-symbol litable-pure-functions-list))))
-======= end
 
 (defun litable--safe-eval (form)
   "Check if FORM contains only known pure functions and eval it.
