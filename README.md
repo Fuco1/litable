@@ -1,9 +1,7 @@
 litable [![Paypal logo](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=A5PMGVKCQBT88) [![Patreon](https://c5.patreon.com/external/logo/logomarkOrange.svg)](https://www.patreon.com/user?u=3282358&ty=h)
 =======
 
-On-the-fly evaluation/substitution of emacs lisp code
-
-Inspired by Light Table's similar feature.
+On-the-fly evaluation of emacs lisp. Inspired by Light Table.
 
 To start this up, simply enable the litable minor mode in the buffer by calling `M-x litable-mode`.
 
@@ -11,11 +9,12 @@ Litable keeps a list of pure functions as a safeguard for unwanted evaluations. 
 
 Not meant to be used in production yet, be warned!
 
-In action
-=======
+Demos
+=====
 
-1. Presentation of the basic *prototype*: http://www.youtube.com/watch?v=TgHvRcbYJ-8 [2:32] \(you don't have to watch this\)
-2. New features, less slow awkward typing: https://www.youtube.com/watch?v=mNO-vgq3Avg [1:50]
+![screenshot](screenshot.png)
+
+There's also a screencast available: https://www.youtube.com/watch?v=mNO-vgq3Avg [1:50]
 
 Contribute
 =======
